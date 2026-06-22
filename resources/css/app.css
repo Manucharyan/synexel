@@ -1,0 +1,23 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../**/*.blade.php';
+@source '../**/*.js';
+
+@theme {
+    --font-sans: 'Segoe UI', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+        'Segoe UI Symbol', 'Noto Color Emoji';
+}
+
+#spreadsheet-grid .cell:focus {
+    outline: none;
+}
+
+#spreadsheet-grid .cell-display {
+    min-height: 1.25rem;
+}
+
+#grid-scroll {
+    scrollbar-color: #94a3b8 #f1f5f9;
+}
