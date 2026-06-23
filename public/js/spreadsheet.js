@@ -192,8 +192,11 @@ class SynexelApp{
     this.presenceTimer=setInterval(beat,15000);
     this.syncTimer=setInterval(sync,4000);
     window.addEventListener('beforeunload',()=>{
-      navigator.sendBeacon?.('/api/v1/workbooks/'+this.wbId+'/presence', new Blob([], {type:'application/json'}));
-      fetch('/api/v1/workbooks/'+this.wbId+'/presence',{method:'DELETE',headers:{Authorization:'Bearer '+tok,'X-Requested-With':'XMLHttpRequest'}}).catch(()=>{});
+      fetch('/api/v1/workbooks/'+this.wbId+'/presence',{
+        method:'DELETE',
+        keepalive:true,
+        headers:{Authorization:'Bearer '+tok,'X-Requested-With':'XMLHttpRequest',Accept:'application/json'},
+      }).catch(()=>{});
     });
   }
 

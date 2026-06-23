@@ -11,19 +11,19 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class WebhookDeliveryController extends Controller
 {
-    public function index(Request $request, ?string $subscriptionId = null): AnonymousResourceCollection
+    public function index(Request $request, ?string $id = null): AnonymousResourceCollection
     {
         $query = WebhookDelivery::query()
             ->whereHas('subscription', fn ($q) => $q->where('user_id', $request->user()->id))
             ->latest();
 
-        if ($subscriptionId) {
+        if ($id) {
             WebhookSubscription::query()
                 ->where('user_id', $request->user()->id)
-                ->where('id', $subscriptionId)
+                ->where('id', $id)
                 ->firstOrFail();
 
-            $query->where('webhook_subscription_id', $subscriptionId);
+            $query->where('webhook_subscription_id', $id);
         }
 
         return WebhookDeliveryResource::collection(

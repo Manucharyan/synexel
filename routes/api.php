@@ -85,10 +85,10 @@ Route::prefix('v1')->group(function () {
 
         Route::get('webhooks', [WebhookSubscriptionController::class, 'index']);
         Route::post('webhooks', [WebhookSubscriptionController::class, 'store']);
+        Route::get('webhooks/deliveries', [WebhookDeliveryController::class, 'index']);
+        Route::get('webhooks/{id}/deliveries', [WebhookDeliveryController::class, 'index']);
         Route::patch('webhooks/{id}', [WebhookSubscriptionController::class, 'update']);
         Route::delete('webhooks/{id}', [WebhookSubscriptionController::class, 'destroy']);
         Route::post('webhooks/{id}/test', [WebhookSubscriptionController::class, 'test']);
-        Route::get('webhooks/deliveries', [WebhookDeliveryController::class, 'index']);
-        Route::get('webhooks/{id}/deliveries', [WebhookDeliveryController::class, 'index']);
     });
 });

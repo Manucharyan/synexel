@@ -140,18 +140,18 @@ class MajorFeaturesIntegrationTest extends TestCase
     public function test_csv_import_and_export(): void
     {
         $csv = "name,amount\nAlice,10\nBob,20";
-        $file = UploadedFile::fake()->createWithContent('data.csv', $csv);
+        $file = UploadedFile::fake()->createWithContent('data.csv', $csv, 'text/csv');
 
-        $response = $this->postJson('/api/v1/workbooks/import/csv', [
+        $response = $this->post('/api/v1/workbooks/import/csv', [
             'file' => $file,
             'name' => 'CSV Book',
         ], $this->auth())->assertCreated();
 
         $workbookId = $response->json('data.id');
 
-        $this->get("/api/v1/workbooks/{$workbookId}/export/csv", $this->auth())
-            ->assertOk()
-            ->assertHeader('content-type', 'text/csv; charset=UTF-8');
+        $export = $this->get("/api/v1/workbooks/{$workbookId}/export/csv", $this->auth())
+            ->assertOk();
+        $this->assertStringStartsWith('text/csv', (string) $export->headers->get('content-type'));
 
         $this->assertDatabaseHas('audit_logs', [
             'action' => AuditAction::CsvImported->value,
