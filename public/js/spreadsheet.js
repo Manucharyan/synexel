@@ -326,7 +326,7 @@ class SynexelApp{
       }
       this.$.gridBody.appendChild(tr);this.cellEls.push(rowEls);
     }
-    if(this.frozenR||this.frozenC) this.setFreeze(this.frozenR,this.frozenC);
+    if(this.frozenR||this.frozenC) this.setFreeze(this.frozenR,this.frozenC,true);
   }
 
   resizeCol(e,col,th){
@@ -341,7 +341,7 @@ class SynexelApp{
     const up=()=>{
       document.removeEventListener('mousemove',move);
       document.removeEventListener('mouseup',up);
-      if(this.frozenR||this.frozenC) this.setFreeze(this.frozenR,this.frozenC);
+      if(this.frozenR||this.frozenC) this.setFreeze(this.frozenR,this.frozenC,true);
     };
     document.addEventListener('mousemove',move);document.addEventListener('mouseup',up);
   }
@@ -357,7 +357,7 @@ class SynexelApp{
     const up=()=>{
       document.removeEventListener('mousemove',move);
       document.removeEventListener('mouseup',up);
-      if(this.frozenR||this.frozenC) this.setFreeze(this.frozenR,this.frozenC);
+      if(this.frozenR||this.frozenC) this.setFreeze(this.frozenR,this.frozenC,true);
     };
     document.addEventListener('mousemove',move);document.addEventListener('mouseup',up);
   }
@@ -890,6 +890,7 @@ class SynexelApp{
   renderAll(){
     for(let r=1;r<=this.ROWS;r++)for(let c=1;c<=this.COLS;c++)this.renderCell(r,c);
     this.renderHdrs();this.updateName();this.updateStatus();this.syncRibbon();this.positionFillHandle();
+    if(this.frozenR||this.frozenC) this.setFreeze(this.frozenR,this.frozenC,true);
   }
 
   renderHdrs(){
@@ -1432,29 +1433,31 @@ class SynexelApp{
     el.style.left='';
     el.style.zIndex='';
   }
-  setFreeze(rows,cols){
+  setFreeze(rows,cols,silent){
     this.frozenR=rows; this.frozenC=cols;
+    const both=rows>0&&cols>0;
     this.$.grid.classList.toggle('has-freeze',!!(rows||cols));
+    this.$.grid.classList.toggle('has-freeze-both',both);
 
     const hc=this.$.colHdr.children;
     for(let i=0;i<hc.length;i++){
       const th=hc[i];
       const c=i; // 0=corner, 1=A, ...
       this._clearFreezeEl(th);
+      th.classList.remove('freeze-corner-hdr','freeze-col-hdr');
       if(c===0){
         if(cols>0){
+          th.classList.add('freeze-corner-hdr');
           th.style.position='sticky';
           th.style.left='0';
-          th.style.zIndex='30';
         }
         continue;
       }
       if(c<=cols){
-        th.classList.add('col-frozen','freeze-sticky');
+        th.classList.add('col-frozen','freeze-sticky','freeze-col-hdr');
         th.classList.toggle('col-freeze-edge',c===cols);
         th.style.position='sticky';
         th.style.left=this._freezeColLeft(c)+'px';
-        th.style.zIndex='22';
       }
     }
 
@@ -1464,20 +1467,22 @@ class SynexelApp{
       tr.classList.toggle('row-freeze-edge',rows>0&&r===rows);
       const rh=tr.children[0];
       this._clearFreezeEl(rh);
+      rh.classList.remove('freeze-corner-hdr','freeze-row-hdr');
 
       const frozenRow=r<=rows;
       if(frozenRow){
-        rh.classList.add('row-frozen','freeze-sticky');
+        rh.classList.add('row-frozen','freeze-sticky','freeze-row-hdr');
+        if(both&&r===1) rh.classList.add('freeze-corner-hdr');
         rh.style.position='sticky';
         rh.style.top=this._freezeRowTop(r)+'px';
         rh.style.left='0';
-        rh.style.zIndex=cols>0?'18':'14';
       }
 
       for(let c=1;c<=this.COLS;c++){
         const td=this.cellEls[r-1]?.[c-1];
         if(!td) continue;
         this._clearFreezeEl(td);
+        td.classList.remove('freeze-intersect','freeze-row-only','freeze-col-only');
         const frozenCol=c<=cols;
         if(!frozenRow&&!frozenCol) continue;
 
@@ -1489,15 +1494,15 @@ class SynexelApp{
           td.classList.toggle('col-freeze-edge',c===cols);
           td.style.left=this._freezeColLeft(c)+'px';
         }
-        if(frozenRow&&frozenCol) td.style.zIndex='9';
-        else if(frozenRow) td.style.zIndex='6';
-        else td.style.zIndex='4';
+        if(frozenRow&&frozenCol) td.classList.add('freeze-intersect');
+        else if(frozenRow) td.classList.add('freeze-row-only');
+        else td.classList.add('freeze-col-only');
       }
     }
 
     APP.querySelector('#btn-freeze-row')?.classList.toggle('active',rows>0);
     APP.querySelector('#btn-freeze-col')?.classList.toggle('active',cols>0);
-    this.toast(rows||cols?'Panes frozen':'Panes unfrozen','info');
+    if(!silent) this.toast(rows||cols?'Panes frozen':'Panes unfrozen','info');
   }
 
   /* ── zoom ── */

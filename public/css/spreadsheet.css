@@ -460,6 +460,18 @@ body{margin:0;font-family:var(--xl-ff);font-size:var(--xl-fs);color:#1a1a1a}
 .xl-grid thead th.col-frozen{background:var(--xl-hdr-bg)}
 .xl-grid tbody td.col-frozen{background:#fff}
 .xl-grid tbody th.row-frozen{background:var(--xl-hdr-bg)}
+
+/* z-index tiers — row-only above col-only so combined freeze stays correct at the T-junction */
+.xl-grid.has-freeze tbody td.freeze-col-only{z-index:20 !important;background:#fff}
+.xl-grid.has-freeze tbody td.freeze-row-only{z-index:28 !important;background:#fff}
+.xl-grid.has-freeze tbody td.freeze-intersect{z-index:36 !important;background:#fff}
+.xl-grid.has-freeze tbody th.freeze-row-hdr{z-index:38 !important;background:var(--xl-hdr-bg)}
+.xl-grid.has-freeze tbody th.freeze-corner-hdr{z-index:42 !important;background:var(--xl-hdr-bg)}
+.xl-grid.has-freeze tbody th:not(.freeze-sticky){z-index:8}
+
+.xl-col-header-bar .xl-corner{z-index:44 !important}
+.xl-col-header-bar .xl-grid thead th.freeze-col-hdr{z-index:40 !important;background:var(--xl-hdr-bg)}
+
 .xl-grid tbody tr.row-freeze-edge td,
 .xl-grid tbody tr.row-freeze-edge th{border-bottom:2px solid #1a73e8 !important}
 .xl-grid thead th.col-freeze-edge,
