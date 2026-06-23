@@ -155,19 +155,32 @@ class SynexelApp{
     this.initSwatches();
     this.initBorderPanel();
     this.applyAccessRestrictions();
+    this.initLockBanner();
     this.bindAll();
     this.loadSheet();
   }
 
+  initLockBanner(){
+    const b=APP.querySelector('#lock-banner');
+    if(!b)return;
+    const key=b.dataset.lockKey||'default';
+    const sk='xl-lock-dismiss-'+key;
+    if(sessionStorage.getItem(sk)==='1')b.classList.add('is-hidden');
+    b.querySelector('.xl-lock-banner-close')?.addEventListener('click',()=>{
+      b.classList.add('is-hidden');
+      sessionStorage.setItem(sk,'1');
+    });
+  }
+
   blockedAdd(opts={}){
     if(this.access.canAdd)return false;
-    if(!opts.silent)this.flashLockBanner();
+    if(!opts.silent)this.flashLockBanner('add');
     return true;
   }
 
   blockedDelete(opts={}){
     if(this.access.canDelete)return false;
-    if(!opts.silent)this.flashLockBanner();
+    if(!opts.silent)this.flashLockBanner('delete');
     return true;
   }
 
@@ -186,13 +199,17 @@ class SynexelApp{
     return hasData&&this.wouldAddAt(upd.row,upd.col);
   }
 
-  flashLockBanner(){
+  flashLockBanner(kind='add'){
     const b=APP.querySelector('#lock-banner');
-    if(!b)return;
-    b.classList.remove('xl-lock-banner-flash');
-    void b.offsetWidth;
-    b.classList.add('xl-lock-banner-flash');
-    b.scrollIntoView({block:'nearest'});
+    if(b&&!b.classList.contains('is-hidden')){
+      b.classList.remove('xl-lock-banner-flash');
+      void b.offsetWidth;
+      b.classList.add('xl-lock-banner-flash');
+    }
+    const msg=kind==='delete'
+      ? 'Deleting data is disabled.'
+      : 'Adding data is disabled.';
+    this.toast(msg,'lock',{dedupe:true});
   }
 
   parseApiError(e){
@@ -894,7 +911,7 @@ class SynexelApp{
       const msg=this.parseApiError(e);
       if(this.isRestrictionError(msg)){
         await this.loadSheet();
-        this.flashLockBanner();
+        this.flashLockBanner(/delet/i.test(msg)?'delete':'add');
         this.setMode('Ready');this.$.saveDot.className='xl-save-dot';
         return;
       }
@@ -1707,9 +1724,34 @@ class SynexelApp{
   closeModal(id){const m=APP.querySelector('#'+id);if(m)m.style.display='none';}
 
   /* ── toast ── */
-  toast(msg,type='info'){
-    const d=document.createElement('div');d.className=`xl-toast xl-toast-${type}`;d.textContent=msg;
-    this.$.toasts?.appendChild(d);setTimeout(()=>d.remove(),3000);
+  toast(msg,type='info',opts={}){
+    if(!this.$.toasts)return;
+    if(opts.dedupe){
+      const existing=this.$.toasts.querySelector(`[data-toast-type="${type}"]`);
+      if(existing){
+        const m=existing.querySelector('.xl-toast-msg');
+        if(m)m.textContent=msg;
+        clearTimeout(existing._timer);
+        existing._timer=setTimeout(()=>existing.remove(),3200);
+        return;
+      }
+    }
+    const d=document.createElement('div');
+    d.className=`xl-toast xl-toast-${type}`;
+    if(opts.dedupe)d.dataset.toastType=type;
+    const text=document.createElement('span');
+    text.className='xl-toast-msg';
+    text.textContent=msg;
+    d.appendChild(text);
+    const close=document.createElement('button');
+    close.type='button';
+    close.className='xl-toast-close';
+    close.setAttribute('aria-label','Dismiss');
+    close.innerHTML='&times;';
+    close.onclick=()=>d.remove();
+    d.appendChild(close);
+    this.$.toasts.appendChild(d);
+    d._timer=setTimeout(()=>d.remove(),3200);
   }
 
   setMode(msg){
