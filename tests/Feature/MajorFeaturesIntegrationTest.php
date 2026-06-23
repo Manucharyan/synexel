@@ -268,4 +268,30 @@ class MajorFeaturesIntegrationTest extends TestCase
             ->assertOk()
             ->assertSee('Webhooks');
     }
+
+    public function test_sharing_page_and_overview_api(): void
+    {
+        $workbook = app(WorkbookService::class)->create($this->owner, 'Sharing UI Test');
+
+        $this->postJson("/api/v1/workbooks/{$workbook->id}/shares", [
+            'email' => $this->collaborator->email,
+            'permission' => 'read',
+        ], $this->auth())->assertCreated();
+
+        $this->getJson('/api/v1/sharing', $this->auth())
+            ->assertOk()
+            ->assertJsonPath('data.owned.0.name', 'Sharing UI Test')
+            ->assertJsonPath('data.owned.0.shares.0.permission', 'read');
+
+        $this->getJson('/api/v1/sharing', $this->auth($this->collaborator))
+            ->assertOk()
+            ->assertJsonPath('data.shared_with_me.0.workbook.name', 'Sharing UI Test')
+            ->assertJsonPath('data.shared_with_me.0.can_edit', false);
+
+        $this->actingAs($this->owner)
+            ->get('/sharing')
+            ->assertOk()
+            ->assertSee('Workbook sharing')
+            ->assertSee('View only');
+    }
 }

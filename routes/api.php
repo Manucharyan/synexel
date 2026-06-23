@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\V1\NamedRangeController;
 use App\Http\Controllers\Api\V1\OperationController;
 use App\Http\Controllers\Api\V1\PresenceController;
 use App\Http\Controllers\Api\V1\RangeController;
+use App\Http\Controllers\Api\V1\SharingController;
 use App\Http\Controllers\Api\V1\SheetController;
 use App\Http\Controllers\Api\V1\WebhookDeliveryController;
 use App\Http\Controllers\Api\V1\WebhookSubscriptionController;
@@ -24,6 +25,7 @@ Route::prefix('v1')->group(function () {
         Route::delete('auth/tokens', [AuthController::class, 'revokeTokens']);
 
         Route::get('audit-logs', [AuditLogController::class, 'index']);
+        Route::get('sharing', [SharingController::class, 'index']);
 
         Route::get('workbooks', [WorkbookController::class, 'index']);
         Route::post('workbooks', [WorkbookController::class, 'store']);

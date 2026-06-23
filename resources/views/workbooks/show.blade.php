@@ -614,11 +614,12 @@
       <button class="xl-modal-x" data-close="modal-share">✕</button>
     </div>
     <div class="xl-modal-body">
+      <p class="xl-help-text">Use <a href="{{ route('sharing.index', ['workbook' => $workbook->id]) }}">Sharing page</a> for full management. <strong>View only</strong> blocks add/edit/delete in cells.</p>
       <div class="xl-field-row"><label>Email</label><input id="share-email" class="xl-field" type="email" placeholder="user@example.com"></div>
       <div class="xl-field-row"><label>Permission</label>
         <select id="share-permission" class="xl-field">
-          <option value="read">View only</option>
-          <option value="write">Can edit</option>
+          <option value="read">View only — cannot add/delete cells</option>
+          <option value="write">Can edit — add, edit, delete cells</option>
         </select>
       </div>
       <div id="share-list" class="share-list"></div>

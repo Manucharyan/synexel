@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Web\AuditLogPageController;
 use App\Http\Controllers\Web\LoginController;
+use App\Http\Controllers\Web\SharingPageController;
 use App\Http\Controllers\Web\SetupController;
 use App\Http\Controllers\Web\UserManagementController;
 use App\Http\Controllers\Web\WebhookPageController;
@@ -51,6 +52,7 @@ Route::middleware(['installed', 'auth'])->group(function () {
 
     Route::get('/workbooks', [WorkbookPageController::class, 'index'])->name('workbooks.index');
     Route::get('/workbooks/{id}', [WorkbookPageController::class, 'show'])->name('workbooks.show');
+    Route::get('/sharing', [SharingPageController::class, 'index'])->name('sharing.index');
     Route::get('/logs', [AuditLogPageController::class, 'index'])->name('audit.index');
     Route::get('/webhooks', [WebhookPageController::class, 'index'])->name('webhooks.index');
 

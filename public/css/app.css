@@ -303,3 +303,56 @@ button, input { font: inherit; }
     .wb-user-meta { display: none; }
     .wb-main { padding: 1rem !important; }
 }
+
+/* Sharing page */
+.sharing-main { max-width: 56rem; }
+.sharing-perm-legend {
+    display: flex; flex-wrap: wrap; gap: 1rem 1.5rem;
+    margin-bottom: 1.5rem; padding: 1rem 1.25rem;
+    background: #fff; border: 1px solid #e2e8f0; border-radius: .75rem;
+    font-size: .875rem;
+}
+.sharing-legend-item { display: inline-flex; align-items: center; gap: .5rem; }
+.sharing-section { margin-bottom: 2rem; }
+.sharing-section-head h2 { margin: 0 0 .25rem; font-size: 1.125rem; }
+.sharing-section-head p { margin: 0 0 1rem; color: var(--synexel-muted); font-size: .875rem; }
+.sharing-stack { display: flex; flex-direction: column; gap: .75rem; }
+.sharing-card {
+    background: #fff; border: 1px solid #e2e8f0; border-radius: .875rem; overflow: hidden;
+}
+.sharing-card-open { border-color: #c7d2fe; box-shadow: 0 0 0 1px #e0e7ff; }
+.sharing-card-flat { padding: 1rem 1.25rem; }
+.sharing-card-head {
+    display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem;
+    padding: 1rem 1.25rem;
+}
+.sharing-card-head h3 { margin: 0; font-size: 1rem; }
+.sharing-card-head h3 a { color: inherit; text-decoration: none; }
+.sharing-card-head h3 a:hover { color: var(--synexel-primary); }
+.sharing-card-meta { margin: .25rem 0 0; font-size: .8125rem; color: var(--synexel-muted); }
+.sharing-card-body { padding: 0 1.25rem 1.25rem; border-top: 1px solid #f1f5f9; }
+.sharing-add-form {
+    display: grid; grid-template-columns: 1fr auto auto; gap: .5rem;
+    align-items: center; padding-top: 1rem; margin-bottom: 1rem;
+}
+.sharing-people { display: flex; flex-direction: column; gap: .5rem; }
+.sharing-person {
+    display: grid; grid-template-columns: 1fr auto auto; gap: .5rem; align-items: center;
+    padding: .75rem; background: #f8fafc; border-radius: .5rem;
+}
+.sharing-person-info strong { display: block; }
+.sharing-access-note { margin: 0 0 .75rem; font-size: .875rem; color: #475569; }
+.sharing-empty { padding: 1.5rem; text-align: center; color: var(--synexel-muted); background: #fff; border: 1px dashed #cbd5e1; border-radius: .75rem; }
+.perm-badge {
+    display: inline-block; padding: .2rem .55rem; border-radius: 999px;
+    font-size: .6875rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em;
+}
+.perm-owner { background: #eef2ff; color: var(--synexel-primary); }
+.perm-write { background: #ecfdf5; color: #047857; }
+.perm-read { background: #fef2f2; color: #b91c1c; }
+.wb-card-badges { display: flex; flex-wrap: wrap; gap: .35rem; align-items: center; }
+.wb-card-actions .btn-share { display: inline-flex; align-items: center; gap: .35rem; text-decoration: none; color: inherit; }
+
+@media (max-width: 768px) {
+    .sharing-add-form, .sharing-person { grid-template-columns: 1fr; }
+}
