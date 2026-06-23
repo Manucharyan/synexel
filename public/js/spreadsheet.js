@@ -2005,8 +2005,8 @@ class SynexelApp{
     });
 
     /* ── VIEW panel ── */
-    this._btn('btn-freeze-row', ()=>this.setFreeze(this.frozenR?0:1,this.frozenC));
-    this._btn('btn-freeze-col', ()=>this.setFreeze(this.frozenR,this.frozenC?0:1));
+    this._btn('btn-freeze-row', ()=>this.setFreeze(this.frozenR?0:1,0));
+    this._btn('btn-freeze-col', ()=>this.setFreeze(0,this.frozenC?0:1));
     this._btn('btn-freeze-none',()=>this.setFreeze(0,0));
     this._btn('btn-zoom-in',  ()=>this.setZoom(this.zoom+0.1));
     this._btn('btn-zoom-out', ()=>this.setZoom(this.zoom-0.1));

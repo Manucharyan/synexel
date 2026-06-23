@@ -608,5 +608,5 @@
 </div>{{-- #app --}}
 </div>{{-- .app-page --}}
 
-<script src="{{ asset('js/spreadsheet.js') }}?v=32" defer></script>
+<script src="{{ asset('js/spreadsheet.js') }}?v=33" defer></script>
 @endsection
