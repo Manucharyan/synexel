@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Web;
 
+use App\Domain\Spreadsheet\Enums\SharePermission;
 use App\Domain\Spreadsheet\Services\WorkbookService;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
@@ -32,9 +33,13 @@ class WorkbookPageController extends Controller
     public function show(Request $request, string $id): View
     {
         $this->ensureApiToken($request);
-        $workbook = $this->workbookService->findForUser($request->user(), $id);
+        $workbook = $this->workbookService->findForUser($request->user(), $id, SharePermission::Read);
         $workbook->load('sheets');
 
-        return view('workbooks.show', compact('workbook'));
+        return view('workbooks.show', [
+            'workbook' => $workbook,
+            'accessPermission' => $workbook->access_permission ?? 'write',
+            'isOwner' => (bool) ($workbook->is_owner ?? $workbook->user_id === $request->user()->id),
+        ]);
     }
 }

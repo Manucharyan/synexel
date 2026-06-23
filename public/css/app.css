@@ -272,3 +272,34 @@ button, input { font: inherit; }
 @media (max-width: 768px) {
     .admin-form-row { grid-template-columns: 1fr; }
 }
+
+/* Webhooks page */
+.webhooks-layout { display: grid; gap: 1.25rem; grid-template-columns: 1fr 1.2fr; }
+.webhooks-panel { background: #fff; border: 1px solid #e2e8f0; border-radius: 1rem; padding: 1.25rem; }
+.panel-title { margin: 0 0 1rem; font-size: 1rem; font-weight: 700; }
+.webhooks-list { display: flex; flex-direction: column; gap: .75rem; }
+.webhook-card { border: 1px solid #e2e8f0; border-radius: .75rem; padding: 1rem; background: #fafbfc; }
+.webhook-card-head { display: flex; justify-content: space-between; gap: .75rem; align-items: flex-start; margin-bottom: .5rem; }
+.webhook-card-events { font-size: .75rem; color: var(--synexel-muted); margin: 0 0 .75rem; word-break: break-word; }
+.webhook-card-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+.webhook-events { display: grid; gap: .35rem; max-height: 12rem; overflow: auto; }
+.webhook-secret { margin-top: .75rem; padding: .75rem; background: #fffbeb; border: 1px solid #fde68a; border-radius: .5rem; font-size: .8125rem; }
+.audit-outcome-success { background: #ecfdf5; color: #047857; }
+.audit-outcome-denied { background: #fef2f2; color: #b91c1c; }
+.audit-outcome-failed { background: #fff7ed; color: #c2410c; }
+.audit-badge-muted { opacity: .7; }
+
+@media (max-width: 900px) {
+    .wb-header-inner { flex-wrap: wrap; gap: .75rem; padding: .75rem 1rem; }
+    .wb-nav { order: 3; width: 100%; overflow-x: auto; flex-wrap: nowrap; }
+    .wb-user { margin-left: auto; }
+    .audit-toolbar { flex-direction: column; align-items: stretch; }
+    .audit-field { width: 100%; }
+    .webhooks-layout { grid-template-columns: 1fr; }
+    .wb-hero { flex-direction: column; align-items: flex-start !important; gap: 1rem; }
+}
+
+@media (max-width: 640px) {
+    .wb-user-meta { display: none; }
+    .wb-main { padding: 1rem !important; }
+}

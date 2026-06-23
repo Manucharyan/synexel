@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Domain\Spreadsheet\Enums\AuditAction;
+use App\Domain\Spreadsheet\Enums\AuditOutcome;
 use App\Domain\Spreadsheet\Models\Workbook;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
@@ -17,6 +18,8 @@ class AuditLog extends Model
     protected $fillable = [
         'user_id',
         'action',
+        'outcome',
+        'resource_type',
         'summary',
         'workbook_id',
         'workbook_name',
@@ -34,6 +37,7 @@ class AuditLog extends Model
     {
         return [
             'action' => AuditAction::class,
+            'outcome' => AuditOutcome::class,
             'details' => 'array',
             'created_at' => 'datetime',
         ];

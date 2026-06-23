@@ -90,6 +90,12 @@ class SynexelApp{
     this.wbId      = APP.dataset.workbookId;
     this.sheets    = JSON.parse(APP.dataset.sheets||'[]');
     this.activeSht = this.sheets[0]?.id??null;
+    this.readOnly  = APP.dataset.access === 'read';
+    this.isOwner   = APP.dataset.isOwner === '1';
+    this.lastSyncAt = new Date().toISOString();
+    this.lastOwnOp  = null;
+    this.presenceTimer = null;
+    this.syncTimer = null;
 
     this.ROWS=200; this.COLS=26;
 
@@ -144,7 +150,10 @@ class SynexelApp{
       toasts:    APP.querySelector('#toast-wrap'),
       colorPanel:APP.querySelector('#color-picker-panel'),
       borderPanel:APP.querySelector('#border-picker-panel'),
+      presenceBar:APP.querySelector('#presence-bar'),
     };
+
+    if(this.readOnly) APP.classList.add('xl-readonly');
 
     this.buildGrid();
     this.renderTabs();
@@ -152,6 +161,74 @@ class SynexelApp{
     this.initBorderPanel();
     this.bindAll();
     this.loadSheet();
+    this.initCollaboration();
+  }
+
+  guardWrite(){
+    if(this.readOnly){this.toast('This workbook is read-only','error');return false;}
+    return true;
+  }
+
+  initCollaboration(){
+    const beat=async()=>{
+      try{
+        const ac=this.activeCellCoords();
+        const res=await api(`/workbooks/${this.wbId}/presence`,{
+          method:'POST',
+          body:{sheet_id:this.activeSht,row:ac.r,col:ac.c},
+        });
+        this.renderPresence(res.data||[]);
+      }catch(_e){}
+    };
+    const sync=async()=>{
+      try{
+        const res=await api(`/workbooks/${this.wbId}/sync?since=${encodeURIComponent(this.lastSyncAt)}${this.lastOwnOp?'&exclude_operation='+encodeURIComponent(this.lastOwnOp):''}`);
+        const ops=res.data||[];
+        if(ops.length)this.applyRemoteOps(ops);
+        this.lastSyncAt=new Date().toISOString();
+      }catch(_e){}
+    };
+    beat();
+    this.presenceTimer=setInterval(beat,15000);
+    this.syncTimer=setInterval(sync,4000);
+    window.addEventListener('beforeunload',()=>{
+      navigator.sendBeacon?.('/api/v1/workbooks/'+this.wbId+'/presence', new Blob([], {type:'application/json'}));
+      fetch('/api/v1/workbooks/'+this.wbId+'/presence',{method:'DELETE',headers:{Authorization:'Bearer '+tok,'X-Requested-With':'XMLHttpRequest'}}).catch(()=>{});
+    });
+  }
+
+  renderPresence(viewers){
+    const bar=this.$.presenceBar;if(!bar)return;
+    if(!viewers.length){bar.innerHTML='';return;}
+    bar.innerHTML=viewers.map(v=>`<span class="xl-presence-chip" title="${v.email||v.name}">${(v.name||'?').split(' ').map(p=>p[0]).join('').slice(0,2)}</span>`).join('');
+  }
+
+  applyRemoteOps(ops){
+    let touched=false;
+    for(const op of ops){
+      if(op.sheet_id!==this.activeSht)continue;
+      for(const ch of (op.cells||[])){
+        const after=ch.after;
+        const k=this.key(ch.row,ch.col);
+        if(!after){
+          this.cells.delete(k);
+        }else{
+          this.cells.set(k,{
+            row:ch.row,col:ch.col,
+            value:after.raw_value,
+            formula:after.formula,
+            computed:after.computed_value,
+            style:cellStyle(after.style),
+          });
+        }
+        this.renderCell(ch.row,ch.col);
+        touched=true;
+      }
+    }
+    if(touched){
+      this.toast('Sheet updated by a collaborator','info');
+      this.refreshComputed().catch(()=>{});
+    }
   }
 
   /* ── key helpers ── */
@@ -763,12 +840,14 @@ class SynexelApp{
 
   async flush(updates,opts={}){
     if(!this.activeSht||!updates.length)return;
+    if(!this.guardWrite())return;
     this.setMode('Saving…');this.$.saveDot.className='xl-save-dot saving';
     try{
       const res=await api(`/workbooks/${this.wbId}/sheets/${this.activeSht}/cells`,{
         method:'PATCH',body:{updates,recalculate:this.needsRecalc(updates)},
       });
       if(res.data?.operation_id){
+        this.lastOwnOp=res.data.operation_id;
         this.opChanges.set(res.data.operation_id,res.data?.changes||[]);
         this.undoStk.push(res.data.operation_id);
         if(!opts.fromRedo)this.redoStk=[];
@@ -832,7 +911,8 @@ class SynexelApp{
     d.style.fontWeight    =st.bold          ?'bold':'';
     d.style.fontStyle     =st.italic        ?'italic':'';
     d.style.textDecoration=[st.underline?'underline':'',st.strikethrough?'line-through':''].filter(Boolean).join(' ')||'';
-    d.style.color         =st.color?(st.color.startsWith('#')?st.color:'#'+st.color):'';
+    if(st.hyperlink?.url)d.style.textDecoration='underline';
+    d.style.color         =st.color?(st.color.startsWith('#')?st.color:'#'+st.color):(st.hyperlink?.url?'#0563c1':'');
     this.applyCellAlign(d,st.align);
     this.applyCellValign(td,d,st.valign);
     d.style.fontSize      =st.fontSize?st.fontSize+'px':'';
@@ -868,7 +948,19 @@ class SynexelApp{
     const div=document.createElement('div');
     div.className='cell-display';
     const showFxPreview=this.editing&&this.editMode==='fx'&&this.isEditAnchor(r,c);
-    div.textContent=showFxPreview?this.$.fxBar.value:this.dispVal(cell);
+    const st=cellStyle(cell?.style);
+    const link=st.hyperlink?.url;
+    const display=showFxPreview?this.$.fxBar.value:this.dispVal(cell);
+    if(link&&!showFxPreview&&!this.showFml){
+      const a=document.createElement('a');
+      a.href=link;a.target='_blank';a.rel='noopener noreferrer';
+      a.className='cell-link';
+      a.textContent=st.hyperlink?.display||display||link;
+      a.addEventListener('click',e=>e.stopPropagation());
+      div.appendChild(a);
+    }else{
+      div.textContent=display;
+    }
     if(cell?.formula&&!showFxPreview)div.title=cell.formula+' → '+(cell.computed??'');
     if(this.showFml&&cell?.formula)div.textContent=cell.formula;
     td.appendChild(div);
@@ -1718,6 +1810,7 @@ class SynexelApp{
         if(a==='delete-col')      this.deleteCol();
         if(a==='find')            this.openFind();
         if(a==='replace')         this.openFind(true);
+        if(a==='hyperlink')       this.openHyperlinkModal();
       });
     });
 
@@ -1965,6 +2058,30 @@ class SynexelApp{
       try{await dlBlob(`/workbooks/${this.wbId}/export`,(this.$.wbName.value.trim()||'workbook')+'.xlsx');this.toast('Exported','success');}
       catch{this.toast('Export failed','error');}
     });
+    this._btn('btn-export-csv',async()=>{
+      try{
+        await dlBlob(`/workbooks/${this.wbId}/export/csv?sheet_id=${this.activeSht}`,(this.$.wbName.value.trim()||'workbook')+'.csv');
+        this.toast('CSV exported','success');
+      }catch{this.toast('CSV export failed','error');}
+    });
+    this._btn('btn-import-google',()=>this.openModal('modal-google'));
+    this._btn('btn-google-import',async()=>{
+      const url=APP.querySelector('#google-url')?.value?.trim();
+      const name=APP.querySelector('#google-name')?.value?.trim();
+      if(!url)return this.toast('Google Sheet URL required','error');
+      this.setMode('Importing Google Sheet…');
+      try{
+        await api('/workbooks/import/google-sheets',{method:'POST',body:{url,name:name||undefined}});
+        this.toast('Google Sheet imported — open it from Workbooks','success');
+        this.closeModal('modal-google');
+      }catch(e){this.toast('Import failed: '+e.message,'error');}
+      this.setMode('Ready');
+    });
+    this._btn('btn-share',()=>this.openShareModal());
+    this._btn('btn-share-add',()=>this.addShare());
+    this._btn('btn-hyperlink',()=>this.openHyperlinkModal());
+    this._btn('btn-hyperlink-ok',()=>this.applyHyperlink());
+    this._btn('btn-hyperlink-remove',()=>this.removeHyperlink());
 
     /* ── sheet bar ── */
     this._btn('btn-add-sheet',()=>this.addSheet());
@@ -1980,6 +2097,95 @@ class SynexelApp{
   }
 
   _btn(id,fn){const el=APP.querySelector('#'+id);if(el)el.addEventListener('click',fn);}
+
+  async openShareModal(){
+    if(!this.isOwner)return;
+    this.openModal('modal-share');
+    await this.loadShares();
+  }
+
+  async loadShares(){
+    const list=APP.querySelector('#share-list');
+    if(!list)return;
+    try{
+      const res=await api(`/workbooks/${this.wbId}/shares`);
+      const shares=res.data||[];
+      list.innerHTML=shares.length?shares.map(s=>`
+        <div class="share-row">
+          <div><strong>${s.user?.name||'User'}</strong><br><span class="audit-muted">${s.user?.email||''}</span></div>
+          <select data-share-id="${s.id}" class="field share-perm">
+            <option value="read" ${s.permission==='read'?'selected':''}>View only</option>
+            <option value="write" ${s.permission==='write'?'selected':''}>Can edit</option>
+          </select>
+          <button type="button" class="btn btn-secondary btn-sm" data-remove-share="${s.id}">Remove</button>
+        </div>
+      `).join(''):'<p class="audit-muted">Not shared with anyone yet.</p>';
+      list.querySelectorAll('.share-perm').forEach(sel=>{
+        sel.addEventListener('change',async()=>{
+          try{
+            await api(`/workbooks/${this.wbId}/shares/${sel.dataset.shareId}`,{method:'PATCH',body:{permission:sel.value}});
+            this.toast('Permission updated','success');
+          }catch(e){this.toast(e.message,'error');}
+        });
+      });
+      list.querySelectorAll('[data-remove-share]').forEach(btn=>{
+        btn.addEventListener('click',async()=>{
+          try{
+            await api(`/workbooks/${this.wbId}/shares/${btn.dataset.removeShare}`,{method:'DELETE'});
+            await this.loadShares();
+          }catch(e){this.toast(e.message,'error');}
+        });
+      });
+    }catch(e){list.innerHTML='<p class="audit-empty">'+e.message+'</p>';}
+  }
+
+  async addShare(){
+    const email=APP.querySelector('#share-email')?.value?.trim();
+    const permission=APP.querySelector('#share-permission')?.value||'read';
+    if(!email)return this.toast('Email required','error');
+    try{
+      await api(`/workbooks/${this.wbId}/shares`,{method:'POST',body:{email,permission}});
+      APP.querySelector('#share-email').value='';
+      await this.loadShares();
+      this.toast('Workbook shared','success');
+    }catch(e){this.toast(e.message,'error');}
+  }
+
+  openHyperlinkModal(){
+    const ac=this.activeCellCoords();
+    const cell=this.cells.get(this.key(ac.r,ac.c));
+    const link=cellStyle(cell?.style).hyperlink||{};
+    APP.querySelector('#hyperlink-url').value=link.url||'';
+    APP.querySelector('#hyperlink-text').value=link.display||this.dispVal(cell)||'';
+    this.openModal('modal-hyperlink');
+  }
+
+  async applyHyperlink(){
+    if(!this.guardWrite())return;
+    const ac=this.activeCellCoords();
+    const url=APP.querySelector('#hyperlink-url')?.value?.trim();
+    const display=APP.querySelector('#hyperlink-text')?.value?.trim();
+    if(!url)return this.toast('URL required','error');
+    const cell=this.cells.get(this.key(ac.r,ac.c))||{row:ac.r,col:ac.c};
+    const style={...cellStyle(cell.style),hyperlink:{url,display:display||undefined}};
+    const upd={row:ac.r,col:ac.c,style};
+    if(display&&!cell.value&&!cell.formula)upd.value=display;
+    this.applyLocalUpdate(upd);
+    await this.flush([upd]);
+    this.closeModal('modal-hyperlink');
+  }
+
+  async removeHyperlink(){
+    if(!this.guardWrite())return;
+    const ac=this.activeCellCoords();
+    const cell=this.cells.get(this.key(ac.r,ac.c));
+    if(!cell)return this.closeModal('modal-hyperlink');
+    const style={...cellStyle(cell.style)};delete style.hyperlink;
+    const upd={row:ac.r,col:ac.c,style};
+    this.applyLocalUpdate(upd);
+    await this.flush([upd]);
+    this.closeModal('modal-hyperlink');
+  }
 }
 
 new SynexelApp();

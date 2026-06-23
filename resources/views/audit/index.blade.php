@@ -38,6 +38,19 @@
                 <option value="workbook.imported">Import</option>
                 <option value="workbook.exported">Export</option>
                 <option value="operation.reverted">Revert</option>
+                <option value="share.added">Share added</option>
+                <option value="share.removed">Share removed</option>
+                <option value="webhook.created">Webhook created</option>
+                <option value="webhook.deleted">Webhook deleted</option>
+                <option value="access.denied">Access denied</option>
+                <option value="csv.imported">CSV import</option>
+                <option value="google_sheets.imported">Google Sheets import</option>
+            </select>
+            <select id="filter-outcome" class="field audit-field">
+                <option value="">All outcomes</option>
+                <option value="success">Success</option>
+                <option value="denied">Denied</option>
+                <option value="failed">Failed</option>
             </select>
             <input id="filter-search" type="search" class="field audit-field audit-search" placeholder="Search summary, target, sheet…">
             <button id="btn-refresh" type="button" class="btn btn-primary">Refresh</button>
@@ -50,13 +63,14 @@
                         <th>When</th>
                         <th>Who</th>
                         <th>Action</th>
+                        <th>Outcome</th>
                         <th>Workbook</th>
                         <th>Target</th>
                         <th>Details</th>
                     </tr>
                 </thead>
                 <tbody id="audit-body">
-                    <tr><td colspan="6" class="audit-loading">Loading activity…</td></tr>
+                    <tr><td colspan="7" class="audit-loading">Loading activity…</td></tr>
                 </tbody>
             </table>
         </div>

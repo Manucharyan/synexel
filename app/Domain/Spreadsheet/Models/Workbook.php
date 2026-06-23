@@ -48,4 +48,9 @@ class Workbook extends Model
     {
         return $this->hasMany(CellChange::class);
     }
+
+    public function shares(): HasMany
+    {
+        return $this->hasMany(WorkbookShare::class);
+    }
 }

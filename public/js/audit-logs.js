@@ -58,7 +58,7 @@
     function renderRows(logs) {
         const body = document.getElementById('audit-body');
         if (!logs.length) {
-            body.innerHTML = '<tr><td colspan="6" class="audit-empty">No activity recorded yet.</td></tr>';
+            body.innerHTML = '<tr><td colspan="7" class="audit-empty">No activity recorded yet.</td></tr>';
             return;
         }
 
@@ -70,6 +70,7 @@
                     ${log.user?.email ? '<br><span class="audit-muted">' + esc(log.user.email) + '</span>' : ''}
                 </td>
                 <td><span class="audit-badge">${esc(log.action_label || log.action)}</span></td>
+                <td><span class="audit-badge audit-outcome-${esc(log.outcome || 'success')}">${esc(log.outcome || 'success')}</span></td>
                 <td>${esc(log.workbook_name || '—')}</td>
                 <td class="audit-target">${esc(log.target || log.summary || '—')}</td>
                 <td class="audit-details">${esc(formatDetails(log))}</td>
@@ -80,15 +81,17 @@
     async function loadLogs(page = 1) {
         const workbook = document.getElementById('filter-workbook')?.value || '';
         const action = document.getElementById('filter-action')?.value || '';
+        const outcome = document.getElementById('filter-outcome')?.value || '';
         const search = document.getElementById('filter-search')?.value.trim() || '';
 
         const params = new URLSearchParams({ page: String(page), per_page: '50' });
         if (workbook) params.set('workbook_id', workbook);
         if (action) params.set('action', action);
+        if (outcome) params.set('outcome', outcome);
         if (search) params.set('search', search);
 
         const body = document.getElementById('audit-body');
-        body.innerHTML = '<tr><td colspan="6" class="audit-loading">Loading activity…</td></tr>';
+        body.innerHTML = '<tr><td colspan="7" class="audit-loading">Loading activity…</td></tr>';
 
         try {
             const data = await api('/audit-logs?' + params.toString());
@@ -107,7 +110,7 @@
             const hint = msg.includes('401') || msg.includes('Unauthenticated')
                 ? 'Session expired — please sign in again.'
                 : 'Could not load activity log.';
-            body.innerHTML = '<tr><td colspan="6" class="audit-error">' + esc(hint) + '</td></tr>';
+            body.innerHTML = '<tr><td colspan="7" class="audit-error">' + esc(hint) + '</td></tr>';
         }
     }
 
@@ -119,7 +122,7 @@
         if (currentPage < lastPage) loadLogs(currentPage + 1);
     });
 
-    ['filter-workbook', 'filter-action'].forEach((id) => {
+    ['filter-workbook', 'filter-action', 'filter-outcome'].forEach((id) => {
         document.getElementById(id)?.addEventListener('change', () => loadLogs(1));
     });
 

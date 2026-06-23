@@ -703,3 +703,36 @@ body{margin:0;font-family:var(--xl-ff);font-size:var(--xl-fs);color:#1a1a1a}
 .xl-toast-info   {background:#1F497D}
 .xl-toast-warn   {background:#ED7D31}
 @keyframes xl-slide{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:none}}
+
+/* Presence + sharing + hyperlinks */
+.xl-presence-bar{display:flex;gap:4px;align-items:center;margin-right:8px}
+.xl-presence-chip{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:999px;background:#1F497D;color:#fff;font-size:10px;font-weight:700}
+.xl-readonly-badge{font-size:11px;font-weight:700;color:#C00000;background:#fde8e8;padding:2px 8px;border-radius:999px;margin-right:8px}
+.xl-readonly .xl-ribbon,.xl-readonly .xl-fxbar,.xl-readonly .xl-bottom{opacity:.92}
+.xl-readonly .xl-qat-btn:not(#btn-export):not(#btn-export-csv){pointer-events:none;opacity:.45}
+.cell-link{color:#0563c1;text-decoration:underline;cursor:pointer}
+.share-list{display:flex;flex-direction:column;gap:.75rem;margin-top:1rem}
+.share-row{display:grid;grid-template-columns:1fr auto auto;gap:.5rem;align-items:center;padding:.5rem 0;border-top:1px solid #e2e8f0}
+.share-perm{min-width:120px}
+.xl-help-text{font-size:11px;color:#666;margin:.5rem 0 0}
+
+@media (max-width: 1024px){
+  .xl-ribbon-tabs{overflow-x:auto;flex-wrap:nowrap}
+  .xl-title{flex-wrap:wrap;height:auto;min-height:36px;padding:6px 8px}
+  .xl-title-center{order:3;width:100%;justify-content:flex-start}
+  .xl-title-right{flex-wrap:wrap;gap:4px}
+  .xl-ribbon{overflow-x:auto}
+  .xl-home-panel,.xl-fx-panel{min-width:max-content}
+  .xl-grid-scroll{touch-action:pan-x pan-y}
+  .xl-ctx{max-width:calc(100vw - 16px)}
+}
+
+@media (max-width: 768px){
+  .xl-ribbon-tabs .xl-tab{padding:6px 10px;font-size:11px}
+  .xl-fxbar{flex-wrap:wrap}
+  .xl-namebox-wrap{width:72px}
+  .xl-formula-input{min-width:0}
+  .xl-bottom{flex-direction:column;align-items:stretch;height:auto}
+  .xl-sheetbar,.xl-statusbar{width:100%}
+  .xl-modal-box{width:calc(100vw - 24px);max-width:none}
+}

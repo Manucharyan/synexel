@@ -12,6 +12,7 @@
 
         <nav class="wb-nav">
             <a href="{{ route('workbooks.index') }}" class="wb-nav-link {{ $active === 'workbooks' ? 'active' : '' }}">Workbooks</a>
+            <a href="{{ route('webhooks.index') }}" class="wb-nav-link {{ $active === 'webhooks' ? 'active' : '' }}">Webhooks</a>
             @if (auth()->user()->isAdmin())
                 <a href="{{ route('admin.users.index') }}" class="wb-nav-link {{ $active === 'users' ? 'active' : '' }}">Users</a>
             @endif

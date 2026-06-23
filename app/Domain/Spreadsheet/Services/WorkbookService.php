@@ -2,6 +2,7 @@
 
 namespace App\Domain\Spreadsheet\Services;
 
+use App\Domain\Spreadsheet\Enums\SharePermission;
 use App\Domain\Spreadsheet\Events\SheetCreated;
 use App\Domain\Spreadsheet\Events\SheetDeleted;
 use App\Domain\Spreadsheet\Events\SheetLayoutChanged;
@@ -16,13 +17,13 @@ use App\Models\User;
 
 class WorkbookService
 {
+    public function __construct(
+        private readonly WorkbookAccessService $accessService,
+    ) {}
+
     public function listForUser(User $user)
     {
-        return Workbook::query()
-            ->where('user_id', $user->id)
-            ->withCount('sheets')
-            ->latest()
-            ->get();
+        return $this->accessService->listAccessible($user);
     }
 
     public function create(User $user, string $name, array $metadata = []): Workbook
@@ -40,12 +41,9 @@ class WorkbookService
         return $workbook->load('sheets');
     }
 
-    public function findForUser(User $user, string $id): Workbook
+    public function findForUser(User $user, string $id, SharePermission $required = SharePermission::Write): Workbook
     {
-        return Workbook::query()
-            ->where('user_id', $user->id)
-            ->where('id', $id)
-            ->firstOrFail();
+        return $this->accessService->findAccessible($user, $id, $required);
     }
 
     public function update(Workbook $workbook, array $data): Workbook

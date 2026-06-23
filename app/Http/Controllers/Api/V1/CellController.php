@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Spreadsheet\Enums\SharePermission;
 use App\Domain\Spreadsheet\Services\CellBatchService;
 use App\Domain\Spreadsheet\Services\WorkbookService;
 use App\Http\Controllers\Controller;
@@ -17,7 +18,7 @@ class CellController extends Controller
 
     public function index(Request $request, string $workbookId, string $sheetId): JsonResponse
     {
-        $workbook = $this->workbookService->findForUser($request->user(), $workbookId);
+        $workbook = $this->workbookService->findForUser($request->user(), $workbookId, SharePermission::Read);
         $sheet = $workbook->sheets()->where('id', $sheetId)->firstOrFail();
 
         $data = $request->validate([
