@@ -2391,12 +2391,19 @@ class SynexelApp{
 
     /* ── workbook name ── */
     let nt;
+    const persistWbName=async()=>{
+      const name=this.$.wbName.value.trim();if(!name)return;
+      try{await api(`/workbooks/${this.wbId}`,{method:'PATCH',body:{name}});}
+      catch(e){this.toast('Failed to save workbook name: '+e.message,'error');}
+    };
     this.$.wbName.addEventListener('input',()=>{
-      clearTimeout(nt);nt=setTimeout(async()=>{
-        const name=this.$.wbName.value.trim();if(!name)return;
-        try{await api(`/workbooks/${this.wbId}`,{method:'PATCH',body:{name}});}catch{}
-      },600);
+      clearTimeout(nt);nt=setTimeout(persistWbName,600);
     });
+    this.$.wbName.addEventListener('keydown',e=>{
+      if(e.key==='Enter'){e.preventDefault();clearTimeout(nt);persistWbName();this.$.wbName.blur();}
+      if(e.key==='Escape'){e.preventDefault();clearTimeout(nt);this.$.wbName.blur();}
+    });
+    this.$.wbName.addEventListener('blur',()=>{clearTimeout(nt);persistWbName();});
   }
 
   _btn(id,fn){const el=APP.querySelector('#'+id);if(el)el.addEventListener('click',fn);}
