@@ -28,10 +28,10 @@
 body{margin:0;font-family:var(--xl-ff);font-size:var(--xl-fs);color:#1a1a1a}
 
 #app{
-  display:flex;flex-direction:column;height:100vh;overflow:hidden;
+  display:flex;flex-direction:column;
+  flex:1;min-height:0;overflow:hidden;
   background:#fff;
 }
-.app-page > #app{height:100%}
 
 /* ───────────────── TITLE BAR ───────────────── */
 .xl-title{

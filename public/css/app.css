@@ -59,9 +59,10 @@ button, input { font: inherit; }
 /* App shell (header + full-height editor) */
 .app-page {
     display: flex; flex-direction: column;
-    min-height: 100vh; background: var(--synexel-bg);
+    height: 100vh; overflow: hidden;
+    background: var(--synexel-bg);
 }
-.app-page > #app { flex: 1; min-height: 0; height: auto; }
+.app-page > #app { flex: 1; min-height: 0; overflow: hidden; }
 
 /* ── Workbooks hub ── */
 .wb-hub { min-height: 100vh; background: linear-gradient(180deg, #eef2ff 0%, var(--synexel-bg) 220px); }

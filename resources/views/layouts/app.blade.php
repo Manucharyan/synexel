@@ -9,7 +9,7 @@
         <meta name="api-token" content="{{ session('api_token') }}">
     @endif
     <title>@yield('title', 'Synexel') — {{ config('app.name') }}</title>
-    <link rel="stylesheet" href="{{ asset('css/app.css') }}?v=4">
+    <link rel="stylesheet" href="{{ asset('css/app.css') }}?v=5">
 </head>
 <body>
     @yield('content')
