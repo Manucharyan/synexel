@@ -60,6 +60,7 @@ Route::middleware(['installed', 'auth'])->group(function () {
         Route::get('/users', [UserManagementController::class, 'index'])->name('users.index');
         Route::post('/users', [UserManagementController::class, 'store'])->name('users.store');
         Route::patch('/users/{user}/active', [UserManagementController::class, 'toggleActive'])->name('users.toggle');
+        Route::patch('/users/{user}/capabilities', [UserManagementController::class, 'updateCapabilities'])->name('users.capabilities');
         Route::delete('/users/{user}', [UserManagementController::class, 'destroy'])->name('users.destroy');
     });
 });

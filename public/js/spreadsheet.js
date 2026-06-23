@@ -92,6 +92,8 @@ class SynexelApp{
     this.activeSht = this.sheets[0]?.id??null;
     this.readOnly  = APP.dataset.access === 'read';
     this.isOwner   = APP.dataset.isOwner === '1';
+    this.canAddCells = document.querySelector('meta[name="user-can-add-cells"]')?.content !== '0';
+    this.canDeleteCells = document.querySelector('meta[name="user-can-delete-cells"]')?.content !== '0';
     this.lastSyncAt = new Date().toISOString();
     this.lastOwnOp  = null;
     this.presenceTimer = null;
@@ -166,6 +168,18 @@ class SynexelApp{
 
   guardWrite(){
     if(this.readOnly){this.toast('This workbook is read-only','error');return false;}
+    return true;
+  }
+
+  guardAdd(){
+    if(!this.guardWrite())return false;
+    if(!this.canAddCells){this.toast('Adding or editing cells is disabled for your account','error');return false;}
+    return true;
+  }
+
+  guardDelete(){
+    if(!this.guardWrite())return false;
+    if(!this.canDeleteCells){this.toast('Deleting or clearing cells is disabled for your account','error');return false;}
     return true;
   }
 
@@ -843,7 +857,8 @@ class SynexelApp{
 
   async flush(updates,opts={}){
     if(!this.activeSht||!updates.length)return;
-    if(!this.guardWrite())return;
+    if(updates.some(u=>u.clear)&&!this.guardDelete())return;
+    if(updates.some(u=>!u.clear)&&!this.guardAdd())return;
     this.setMode('Saving…');this.$.saveDot.className='xl-save-dot saving';
     try{
       const res=await api(`/workbooks/${this.wbId}/sheets/${this.activeSht}/cells`,{
@@ -1268,6 +1283,7 @@ class SynexelApp{
 
   /* ── clipboard ── */
   copy(cut=false){
+    if(cut&&!this.guardDelete())return;
     const s=this.norm();
     const data=[];
     for(let r=s.r1;r<=s.r2;r++){
@@ -1286,6 +1302,7 @@ class SynexelApp{
 
   async paste(valOnly=false){
     if(!this.clip)return;
+    if(!this.guardAdd())return;
     const updates=[];
     const{data,rows,cols}=this.clip;
     for(let dr=0;dr<rows;dr++)for(let dc=0;dc<cols;dc++){
@@ -1302,6 +1319,7 @@ class SynexelApp{
   }
 
   async clearSel(){
+    if(!this.guardDelete())return;
     const s=this.norm();
     await this.unmergeSelection(s);
     const updates=[];
@@ -1430,6 +1448,7 @@ class SynexelApp{
   }
 
   async insertRow(above=true){
+    if(!this.guardAdd())return;
     const s=this.norm();
     const atRow=above?s.r1:s.r2+1;
     try{
@@ -1444,6 +1463,7 @@ class SynexelApp{
   }
 
   async deleteRow(){
+    if(!this.guardDelete())return;
     const s=this.norm();
     const count=s.r2-s.r1+1;
     if(count>=this.ROWS){this.toast('Cannot delete all rows','error');return;}
@@ -1460,6 +1480,7 @@ class SynexelApp{
   }
 
   async insertCol(left=true){
+    if(!this.guardAdd())return;
     const s=this.norm();
     const atCol=left?s.c1:s.c2+1;
     try{
@@ -1474,6 +1495,7 @@ class SynexelApp{
   }
 
   async deleteCol(){
+    if(!this.guardDelete())return;
     const s=this.norm();
     const count=s.c2-s.c1+1;
     if(count>=this.COLS){this.toast('Cannot delete all columns','error');return;}
@@ -2164,7 +2186,7 @@ class SynexelApp{
   }
 
   async applyHyperlink(){
-    if(!this.guardWrite())return;
+    if(!this.guardAdd())return;
     const ac=this.activeCellCoords();
     const url=APP.querySelector('#hyperlink-url')?.value?.trim();
     const display=APP.querySelector('#hyperlink-text')?.value?.trim();

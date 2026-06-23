@@ -44,7 +44,9 @@
                 <option value="webhook.deleted">Webhook deleted</option>
                 <option value="access.denied">Access denied</option>
                 <option value="csv.imported">CSV import</option>
-                <option value="google_sheets.imported">Google Sheets import</option>
+                <option value="cell.add_denied">Add denied</option>
+                <option value="cell.delete_denied">Delete denied</option>
+                <option value="user.capabilities_updated">User permissions updated</option>
             </select>
             <select id="filter-outcome" class="field audit-field">
                 <option value="">All outcomes</option>

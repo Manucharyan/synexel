@@ -27,6 +27,8 @@ class User extends Authenticatable
         'password',
         'role',
         'is_active',
+        'can_add_cells',
+        'can_delete_cells',
     ];
 
     /**
@@ -51,6 +53,8 @@ class User extends Authenticatable
             'password' => 'hashed',
             'role' => UserRole::class,
             'is_active' => 'boolean',
+            'can_add_cells' => 'boolean',
+            'can_delete_cells' => 'boolean',
         ];
     }
 

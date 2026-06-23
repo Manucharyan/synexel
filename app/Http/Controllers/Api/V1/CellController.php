@@ -6,6 +6,7 @@ use App\Domain\Spreadsheet\Enums\SharePermission;
 use App\Domain\Spreadsheet\Services\CellBatchService;
 use App\Domain\Spreadsheet\Services\WorkbookService;
 use App\Http\Controllers\Controller;
+use App\Services\UserCapabilitiesService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -14,6 +15,7 @@ class CellController extends Controller
     public function __construct(
         private readonly WorkbookService $workbookService,
         private readonly CellBatchService $cellBatchService,
+        private readonly UserCapabilitiesService $capabilities,
     ) {}
 
     public function index(Request $request, string $workbookId, string $sheetId): JsonResponse
@@ -52,6 +54,8 @@ class CellController extends Controller
             'recalculate' => ['nullable', 'boolean'],
         ]);
 
+        $this->capabilities->assertUpdatesAllowed($request->user(), $data['updates']);
+
         $result = $this->cellBatchService->batchUpdate(
             $sheet,
             $data['updates'],
@@ -71,6 +75,8 @@ class CellController extends Controller
             'range' => ['required', 'string'],
             'operation_id' => ['nullable', 'string', 'max:64'],
         ]);
+
+        $this->capabilities->assertCanDelete($request->user(), 'clear range');
 
         $result = $this->cellBatchService->clearRange(
             $sheet,

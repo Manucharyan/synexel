@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Web;
 use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\UserCapabilitiesService;
 use App\Services\UserService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -12,7 +13,10 @@ use Illuminate\View\View;
 
 class UserManagementController extends Controller
 {
-    public function __construct(private readonly UserService $userService) {}
+    public function __construct(
+        private readonly UserService $userService,
+        private readonly UserCapabilitiesService $capabilitiesService,
+    ) {}
 
     public function index(Request $request): View
     {
@@ -70,5 +74,30 @@ class UserManagementController extends Controller
         return redirect()
             ->route('admin.users.index')
             ->with('status', "User \"{$name}\" was deleted.");
+    }
+
+    public function updateCapabilities(Request $request, User $user): RedirectResponse
+    {
+        $data = $request->validate([
+            'can_add_cells' => ['required', 'boolean'],
+            'can_delete_cells' => ['required', 'boolean'],
+        ]);
+
+        try {
+            $this->capabilitiesService->updateCapabilities(
+                $request->user(),
+                $user,
+                (bool) $data['can_add_cells'],
+                (bool) $data['can_delete_cells'],
+            );
+        } catch (\InvalidArgumentException $e) {
+            return redirect()
+                ->route('admin.users.index')
+                ->withErrors(['capabilities' => $e->getMessage()]);
+        }
+
+        return redirect()
+            ->route('admin.users.index')
+            ->with('status', "Cell permissions updated for \"{$user->name}\".");
     }
 }

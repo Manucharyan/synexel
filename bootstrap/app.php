@@ -47,4 +47,12 @@ return Application::configure(basePath: dirname(__DIR__))
 
             abort(403, $e->getMessage());
         });
+
+        $exceptions->render(function (\App\Exceptions\UserCapabilityDeniedException $e, $request) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $e->getMessage()], 403);
+            }
+
+            abort(403, $e->getMessage());
+        });
     })->create();

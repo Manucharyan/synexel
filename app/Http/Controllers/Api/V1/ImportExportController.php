@@ -14,6 +14,7 @@ use App\Domain\Spreadsheet\Services\XlsxImportService;
 use App\Domain\Spreadsheet\Services\AuditLogService;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\WorkbookResource;
+use App\Services\UserCapabilitiesService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -30,10 +31,13 @@ class ImportExportController extends Controller
         private readonly CsvExportService $csvExportService,
         private readonly GoogleSheetsImportService $googleSheetsImportService,
         private readonly AuditLogService $auditLogService,
+        private readonly UserCapabilitiesService $capabilities,
     ) {}
 
     public function import(Request $request): WorkbookResource
     {
+        $this->capabilities->assertCanAdd($request->user(), 'import workbook');
+
         $request->validate([
             'file' => ['required', 'file', 'mimes:xlsx,xls', 'max:20480'],
             'name' => ['nullable', 'string', 'max:255'],
@@ -50,6 +54,8 @@ class ImportExportController extends Controller
 
     public function importCsv(Request $request): WorkbookResource
     {
+        $this->capabilities->assertCanAdd($request->user(), 'import csv');
+
         $request->validate([
             'file' => ['required', 'file', 'mimes:csv,txt', 'max:20480'],
             'name' => ['nullable', 'string', 'max:255'],
@@ -68,6 +74,8 @@ class ImportExportController extends Controller
 
     public function importGoogleSheet(Request $request): WorkbookResource
     {
+        $this->capabilities->assertCanAdd($request->user(), 'import google sheet');
+
         $data = $request->validate([
             'url' => ['required_without:spreadsheet_id', 'nullable', 'string', 'max:2048'],
             'spreadsheet_id' => ['required_without:url', 'nullable', 'string', 'max:128'],
@@ -111,6 +119,8 @@ class ImportExportController extends Controller
     {
         $workbook = $this->workbookService->findForUser($request->user(), $workbookId);
         $sheet = $workbook->sheets()->where('id', $sheetId)->firstOrFail();
+
+        $this->capabilities->assertCanAdd($request->user(), 'import sheet');
 
         $request->validate([
             'file' => ['required', 'file', 'mimes:xlsx,xls,csv,txt', 'max:20480'],

@@ -259,6 +259,13 @@ button, input { font: inherit; }
 .admin-table td strong { display: block; }
 .admin-muted { display: block; font-size: .75rem; color: var(--synexel-muted); }
 .admin-actions { display: flex; gap: .5rem; flex-wrap: wrap; white-space: nowrap; }
+.admin-capability-legend {
+    display: flex; flex-wrap: wrap; gap: 1rem 1.5rem; margin-bottom: 1rem;
+    padding: .875rem 1rem; background: #fff; border: 1px solid #e2e8f0; border-radius: .75rem;
+    font-size: .8125rem; color: #475569;
+}
+.capability-form { display: flex; flex-direction: column; gap: .35rem; min-width: 7rem; }
+.cap-check { display: flex; align-items: center; gap: .35rem; font-size: .75rem; white-space: nowrap; }
 .inline-form { display: inline; }
 .btn-sm { padding: .35rem .65rem; font-size: .75rem; }
 .btn-danger { background: #fff; border: 1px solid #fecaca; color: #dc2626; border-radius: .5rem; cursor: pointer; font-weight: 600; }

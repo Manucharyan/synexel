@@ -7,6 +7,7 @@ use App\Domain\Spreadsheet\Services\SortFilterService;
 use App\Domain\Spreadsheet\Services\WorkbookService;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\SheetResource;
+use App\Services\UserCapabilitiesService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -16,6 +17,7 @@ class RangeController extends Controller
         private readonly WorkbookService $workbookService,
         private readonly SortFilterService $sortFilterService,
         private readonly SheetStructureService $sheetStructureService,
+        private readonly UserCapabilitiesService $capabilities,
     ) {}
 
     public function sort(Request $request, string $workbookId, string $sheetId): JsonResponse
@@ -28,6 +30,8 @@ class RangeController extends Controller
             'column' => ['required', 'integer', 'min:1'],
             'order' => ['nullable', 'string', 'in:asc,desc'],
         ]);
+
+        $this->capabilities->assertCanAdd($request->user(), 'sort range');
 
         $result = $this->sortFilterService->sort(
             $sheet,
@@ -65,6 +69,8 @@ class RangeController extends Controller
             'end_row' => ['required', 'integer', 'min:1', 'gte:start_row'],
         ]);
 
+        $this->capabilities->assertCanDelete($request->user(), 'delete rows');
+
         $result = $this->sheetStructureService->deleteRows(
             $sheet,
             $data['start_row'],
@@ -83,6 +89,8 @@ class RangeController extends Controller
             'start_col' => ['required', 'integer', 'min:1'],
             'end_col' => ['required', 'integer', 'min:1', 'gte:start_col'],
         ]);
+
+        $this->capabilities->assertCanDelete($request->user(), 'delete columns');
 
         $result = $this->sheetStructureService->deleteColumns(
             $sheet,
@@ -103,6 +111,8 @@ class RangeController extends Controller
             'count' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
 
+        $this->capabilities->assertCanAdd($request->user(), 'insert rows');
+
         $result = $this->sheetStructureService->insertRows(
             $sheet,
             $data['at_row'],
@@ -121,6 +131,8 @@ class RangeController extends Controller
             'at_col' => ['required', 'integer', 'min:1'],
             'count' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
+
+        $this->capabilities->assertCanAdd($request->user(), 'insert columns');
 
         $result = $this->sheetStructureService->insertColumns(
             $sheet,

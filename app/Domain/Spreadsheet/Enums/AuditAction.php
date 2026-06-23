@@ -41,6 +41,9 @@ enum AuditAction: string
     case HyperlinkChanged = 'hyperlink.changed';
     case PresenceJoined = 'presence.joined';
     case PresenceLeft = 'presence.left';
+    case CellAddDenied = 'cell.add_denied';
+    case CellDeleteDenied = 'cell.delete_denied';
+    case UserCapabilitiesUpdated = 'user.capabilities_updated';
 
     public function label(): string
     {
@@ -82,6 +85,9 @@ enum AuditAction: string
             self::HyperlinkChanged => 'Changed hyperlink',
             self::PresenceJoined => 'Joined workbook',
             self::PresenceLeft => 'Left workbook',
+            self::CellAddDenied => 'Add cells denied',
+            self::CellDeleteDenied => 'Delete cells denied',
+            self::UserCapabilitiesUpdated => 'Updated user cell permissions',
         };
     }
 }
