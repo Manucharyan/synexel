@@ -110,18 +110,26 @@ fi
 # ── env check ────────────────────────────────────────────────────────────────
 [[ -f .env ]] || die ".env file missing. Copy .env.example to .env and configure it first."
 
+if ! grep -qE '^APP_KEY=base64:' .env 2>/dev/null; then
+  if ! grep -qE '^APP_KEY=.{10,}' .env 2>/dev/null || grep -qE '^APP_KEY=$' .env 2>/dev/null; then
+    warn "APP_KEY is empty — generating one"
+    run_artisan key:generate --force
+  fi
+fi
+
 # ── migrations ───────────────────────────────────────────────────────────────
 log "Running database migrations"
 run_artisan migrate --force
 
+log "Ensuring storage symlink"
+run_artisan storage:link 2>/dev/null || true
+
 # ── caches ───────────────────────────────────────────────────────────────────
 log "Clearing and rebuilding caches"
-run_artisan config:clear
-run_artisan route:clear
-run_artisan view:clear
-run_artisan cache:clear
+run_artisan optimize:clear
 run_artisan config:cache
-run_artisan route:cache
+# Route cache is skipped: web.php uses closure routes which cannot be serialized.
+run_artisan route:clear
 run_artisan view:cache
 
 # ── storage permissions (safe on Linux servers) ────────────────────────────────

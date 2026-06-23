@@ -32,14 +32,18 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (\App\Exceptions\WorkbookAccessDeniedException $e, $request) {
-            app(\App\Domain\Spreadsheet\Services\AuditLogService::class)->recordDenied(
-                \App\Domain\Spreadsheet\Enums\AuditAction::AccessDenied,
-                $e->getMessage(),
-                $e->workbook,
-                details: ['required_permission' => $e->required->value],
-                user: $request->user(),
-                resourceType: 'workbook',
-            );
+            try {
+                app(\App\Domain\Spreadsheet\Services\AuditLogService::class)->recordDenied(
+                    \App\Domain\Spreadsheet\Enums\AuditAction::AccessDenied,
+                    $e->getMessage(),
+                    $e->workbook,
+                    details: ['required_permission' => $e->required->value],
+                    user: $request->user(),
+                    resourceType: 'workbook',
+                );
+            } catch (\Throwable) {
+                // Never turn an access-denied response into a 500 (e.g. pending migrations).
+            }
 
             if ($request->expectsJson()) {
                 return response()->json(['message' => $e->getMessage()], 403);
