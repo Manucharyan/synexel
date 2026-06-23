@@ -338,7 +338,11 @@ class SynexelApp{
       this.cellEls.forEach(row=>{if(row[col-1]){row[col-1].style.width=row[col-1].style.minWidth=w+'px';}});
       this.positionFillHandle();
     };
-    const up=()=>{document.removeEventListener('mousemove',move);document.removeEventListener('mouseup',up)};
+    const up=()=>{
+      document.removeEventListener('mousemove',move);
+      document.removeEventListener('mouseup',up);
+      if(this.frozenR||this.frozenC) this.setFreeze(this.frozenR,this.frozenC);
+    };
     document.addEventListener('mousemove',move);document.addEventListener('mouseup',up);
   }
 
@@ -350,7 +354,11 @@ class SynexelApp{
       this.rowH[row-1]=h;tr.style.height=h+'px';rh.style.height=h+'px';
       this.cellEls[row-1]?.forEach(td=>{if(td)td.style.height=h+'px';});
     };
-    const up=()=>{document.removeEventListener('mousemove',move);document.removeEventListener('mouseup',up)};
+    const up=()=>{
+      document.removeEventListener('mousemove',move);
+      document.removeEventListener('mouseup',up);
+      if(this.frozenR||this.frozenC) this.setFreeze(this.frozenR,this.frozenC);
+    };
     document.addEventListener('mousemove',move);document.addEventListener('mouseup',up);
   }
 
@@ -1405,63 +1413,85 @@ class SynexelApp{
   }
 
   /* ── freeze ── */
+  _freezeRowTop(r){
+    let top=0;
+    for(let rr=1;rr<r;rr++) top+=this.rowH[rr-1];
+    return top;
+  }
+  _freezeColLeft(c){
+    const ROW_HDR_W=46;
+    let left=ROW_HDR_W;
+    for(let cc=1;cc<c;cc++) left+=this.colW[cc-1];
+    return left;
+  }
+  _clearFreezeEl(el){
+    if(!el) return;
+    el.classList.remove('col-frozen','col-freeze-edge','row-frozen','freeze-sticky');
+    el.style.position='';
+    el.style.top='';
+    el.style.left='';
+    el.style.zIndex='';
+  }
   setFreeze(rows,cols){
     this.frozenR=rows; this.frozenC=cols;
-    const HDR_H=20;      // thead row height (px)
-    const ROW_HDR_W=46;  // tbody th (row header) width (px)
+    this.$.grid.classList.toggle('has-freeze',!!(rows||cols));
 
-    // Frozen column headers: make them sticky along the X axis
-    const hc=this.$.colHdr.children; // [0]=corner, [1]=A, ...
-    for(let c=1;c<=this.COLS;c++){
-      const th=hc[c]; if(!th) continue;
+    const hc=this.$.colHdr.children;
+    for(let i=0;i<hc.length;i++){
+      const th=hc[i];
+      const c=i; // 0=corner, 1=A, ...
+      this._clearFreezeEl(th);
+      if(c===0){
+        if(cols>0){
+          th.style.position='sticky';
+          th.style.left='0';
+          th.style.zIndex='30';
+        }
+        continue;
+      }
       if(c<=cols){
-        let left=ROW_HDR_W;
-        for(let cc=1;cc<c;cc++) left+=this.colW[cc-1];
-        th.classList.add('col-frozen');
-        th.style.left=left+'px';
-        th.style.zIndex=22;
-        th.classList.toggle('col-freeze-edge', c===cols);
-      } else {
-        th.classList.remove('col-frozen','col-freeze-edge');
-        th.style.left=''; th.style.zIndex='';
+        th.classList.add('col-frozen','freeze-sticky');
+        th.classList.toggle('col-freeze-edge',c===cols);
+        th.style.position='sticky';
+        th.style.left=this._freezeColLeft(c)+'px';
+        th.style.zIndex='22';
       }
     }
 
-    // Rows and data cells
     for(let r=1;r<=this.ROWS;r++){
-      const tr=this.$.gridBody.children[r-1]; if(!tr) continue;
-      const rh=tr.children[0]; // row header th
+      const tr=this.$.gridBody.children[r-1];
+      if(!tr) continue;
+      tr.classList.toggle('row-freeze-edge',rows>0&&r===rows);
+      const rh=tr.children[0];
+      this._clearFreezeEl(rh);
 
-      if(r<=rows){
-        // Sticky row: calculate cumulative top offset
-        let top=HDR_H;
-        for(let rr=1;rr<r;rr++) top+=this.rowH[rr-1];
-        tr.style.position='sticky';
-        tr.style.top=top+'px';
-        tr.style.zIndex=4;
-        tr.classList.add('row-frozen');
-        tr.classList.toggle('row-freeze-edge', r===rows);
-        if(rh){ rh.style.zIndex=12; }
-      } else {
-        tr.style.position=''; tr.style.top=''; tr.style.zIndex='';
-        tr.classList.remove('row-frozen','row-freeze-edge');
-        if(rh){ rh.style.zIndex=''; }
+      const frozenRow=r<=rows;
+      if(frozenRow){
+        rh.classList.add('row-frozen','freeze-sticky');
+        rh.style.position='sticky';
+        rh.style.top=this._freezeRowTop(r)+'px';
+        rh.style.left='0';
+        rh.style.zIndex=cols>0?'18':'14';
       }
 
       for(let c=1;c<=this.COLS;c++){
-        const td=this.cellEls[r-1]?.[c-1]; if(!td) continue;
-        if(c<=cols){
-          let left=ROW_HDR_W;
-          for(let cc=1;cc<c;cc++) left+=this.colW[cc-1];
+        const td=this.cellEls[r-1]?.[c-1];
+        if(!td) continue;
+        this._clearFreezeEl(td);
+        const frozenCol=c<=cols;
+        if(!frozenRow&&!frozenCol) continue;
+
+        td.classList.add('freeze-sticky');
+        td.style.position='sticky';
+        if(frozenRow) td.style.top=this._freezeRowTop(r)+'px';
+        if(frozenCol){
           td.classList.add('col-frozen');
-          td.classList.toggle('col-freeze-edge', c===cols);
-          td.style.position='sticky';
-          td.style.left=left+'px';
-          td.style.zIndex=r<=rows?6:3;
-        } else {
-          td.classList.remove('col-frozen','col-freeze-edge');
-          td.style.position=''; td.style.left=''; td.style.zIndex='';
+          td.classList.toggle('col-freeze-edge',c===cols);
+          td.style.left=this._freezeColLeft(c)+'px';
         }
+        if(frozenRow&&frozenCol) td.style.zIndex='9';
+        else if(frozenRow) td.style.zIndex='6';
+        else td.style.zIndex='4';
       }
     }
 
@@ -1474,8 +1504,13 @@ class SynexelApp{
   setZoom(z){
     this.zoom=Math.max(0.5,Math.min(2,z));
     const pct=Math.round(this.zoom*100)+'%';
-    this.$.grid.style.transform=`scale(${this.zoom})`;
-    this.$.grid.style.transformOrigin='top left';
+    if(this.zoom!==1){
+      this.$.grid.style.transform=`scale(${this.zoom})`;
+      this.$.grid.style.transformOrigin='top left';
+    }else{
+      this.$.grid.style.transform='';
+      this.$.grid.style.transformOrigin='';
+    }
     if(this.$.zoomPct)this.$.zoomPct.textContent=pct;
     if(this.$.zoomLbl)this.$.zoomLbl.textContent=pct;
     if(this.$.zoomSlider)this.$.zoomSlider.value=Math.round(this.zoom*100);

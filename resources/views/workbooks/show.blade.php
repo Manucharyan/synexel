@@ -1,7 +1,7 @@
 @extends('layouts.app')
 @section('title', $workbook->name)
 @section('content')
-<link rel="stylesheet" href="{{ asset('css/spreadsheet.css') }}?v=30">
+<link rel="stylesheet" href="{{ asset('css/spreadsheet.css') }}?v=31">
 
 <div class="app-page">
 @include('partials.app-header', ['active' => ''])
@@ -608,5 +608,5 @@
 </div>{{-- #app --}}
 </div>{{-- .app-page --}}
 
-<script src="{{ asset('js/spreadsheet.js') }}?v=30" defer></script>
+<script src="{{ asset('js/spreadsheet.js') }}?v=31" defer></script>
 @endsection
