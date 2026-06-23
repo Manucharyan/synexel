@@ -713,5 +713,5 @@
 </div>{{-- #app --}}
 </div>{{-- .app-page --}}
 
-<script src="{{ asset('js/spreadsheet.js') }}?v=35" defer></script>
+<script src="{{ asset('js/spreadsheet.js') }}?v=36" defer></script>
 @endsection

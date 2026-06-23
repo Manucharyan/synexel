@@ -51,6 +51,36 @@ const rangesOverlap=(a,b)=>!(a.r2<b.r1||a.r1>b.r2||a.c2<b.c1||a.c1>b.c2);
 const BORDER_LINE='2px solid #000000';
 const BORDER_COLOR='#000000';
 const BORDER_WIDTH=2;
+const FONT_SIZES=[8,9,10,11,12,14,16,18,20,24,28,36];
+
+function setFontSizeSelect(size){
+  const fs=APP?.querySelector('#font-size');
+  if(!fs||size==null||size==='')return;
+  const val=String(size);
+  if(![...fs.options].some(o=>o.value===val)){
+    const opt=document.createElement('option');
+    opt.value=val;opt.textContent=val;
+    const num=+val;
+    let inserted=false;
+    for(let i=0;i<fs.options.length;i++){
+      if(+fs.options[i].value>num){fs.insertBefore(opt,fs.options[i]);inserted=true;break;}
+    }
+    if(!inserted)fs.appendChild(opt);
+  }
+  fs.value=val;
+}
+
+function stepFontSize(current,dir){
+  const size=current||11;
+  let idx=FONT_SIZES.indexOf(size);
+  if(idx<0){
+    idx=FONT_SIZES.findIndex(s=>s>=size);
+    if(idx<0)idx=FONT_SIZES.length-1;
+    else if(FONT_SIZES[idx]>size)idx=Math.max(0,idx-1);
+  }
+  idx=Math.max(0,Math.min(FONT_SIZES.length-1,idx+dir));
+  return FONT_SIZES[idx];
+}
 
 /* ─── colour swatches ─── */
 const SWATCHES=[
@@ -1190,7 +1220,7 @@ class SynexelApp{
     const fc=APP.querySelector('#font-color');if(fc&&st.color)fc.value=st.color.startsWith('#')?st.color:'#'+st.color;
     const fl=APP.querySelector('#fill-color');if(fl&&st.bg)fl.value=st.bg.startsWith('#')?st.bg:'#'+st.bg;
     const nf=APP.querySelector('#number-format');if(nf)nf.value=st.format||'';
-    const fs=APP.querySelector('#font-size');if(fs&&st.fontSize)fs.value=st.fontSize;
+    const fs=APP.querySelector('#font-size');if(fs&&st.fontSize)setFontSizeSelect(st.fontSize);
     const ff=APP.querySelector('#font-family');if(ff&&st.fontFamily)ff.value=st.fontFamily;
     if(st.color){const b=APP.querySelector('#font-color-bar');if(b)b.style.background=st.color.startsWith('#')?st.color:'#'+st.color;}
     if(st.bg){const b=APP.querySelector('#fill-color-bar');if(b)b.style.background=st.bg.startsWith('#')?st.bg:'#'+st.bg;}
@@ -2210,11 +2240,11 @@ class SynexelApp{
     APP.querySelector('#btn-fmt-comma')    ?.addEventListener('click',()=>this.applyProp('format','integer'));
     APP.querySelector('#btn-inc-font')     ?.addEventListener('click',()=>{
       const st=cellStyle(this.cells.get(this.key(this.sel.r1,this.sel.c1))?.style);
-      this.applyProp('fontSize',(st.fontSize||11)+2);
+      this.applyProp('fontSize',stepFontSize(st.fontSize,1));
     });
     APP.querySelector('#btn-dec-font')?.addEventListener('click',()=>{
       const st=cellStyle(this.cells.get(this.key(this.sel.r1,this.sel.c1))?.style);
-      this.applyProp('fontSize',Math.max(6,(st.fontSize||11)-2));
+      this.applyProp('fontSize',stepFontSize(st.fontSize,-1));
     });
 
     /* color pickers — click preview to apply current color, dropdown to open palette */
