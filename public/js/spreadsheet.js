@@ -136,6 +136,7 @@ class SynexelApp{
       fillHnd:   APP.querySelector('#fill-handle'),
       acList:    APP.querySelector('#autocomplete-list'),
       gridWrap:  APP.querySelector('#grid-scroll'),
+      colHdrBar: APP.querySelector('#col-header-bar'),
       gridInner: APP.querySelector('#grid-inner'),
       grid:      APP.querySelector('#spreadsheet-grid'),
       zoomSlider:APP.querySelector('#zoom-slider'),
@@ -1975,12 +1976,20 @@ class SynexelApp{
       this.$.grid.classList.toggle('hide-gridlines',!e.target.checked);
     });
     APP.querySelector('#chk-headers')?.addEventListener('change',e=>{
-      this.$.colHdr.style.display=e.target.checked?'':'none';
-      this.$.gridBody.querySelectorAll('th').forEach(th=>th.style.display=e.target.checked?'':'none');
+      const show=e.target.checked;
+      if(this.$.colHdrBar)this.$.colHdrBar.style.display=show?'':'none';
+      this.$.gridBody.querySelectorAll('th').forEach(th=>th.style.display=show?'':'none');
     });
     APP.querySelector('#chk-formulas')?.addEventListener('change',e=>{
       this.showFml=e.target.checked;this.renderAll();
     });
+
+    /* ── sync col-header-bar horizontal scroll with grid ── */
+    if(this.$.colHdrBar){
+      this.$.gridWrap.addEventListener('scroll',()=>{
+        this.$.colHdrBar.scrollLeft=this.$.gridWrap.scrollLeft;
+      });
+    }
 
     /* ── modals generic close ── */
     APP.querySelectorAll('[data-close]').forEach(btn=>{

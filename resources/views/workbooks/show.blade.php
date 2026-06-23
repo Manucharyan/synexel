@@ -409,12 +409,18 @@
   <div id="autocomplete-list" class="xl-ac-list" style="display:none"></div>
 </div>
 
+{{-- ══════════════ COL HEADER BAR (always visible) ══════════════ --}}
+<div id="col-header-bar" class="xl-col-header-bar">
+  <table class="xl-grid">
+    <thead><tr id="col-headers"></tr></thead>
+  </table>
+</div>
+
 {{-- ══════════════ GRID ══════════════ --}}
 <div id="grid-scroll" class="xl-grid-scroll">
   <div id="grid-inner" class="xl-grid-inner">
     <div id="fill-handle" class="xl-fill-handle" style="display:none"></div>
     <table id="spreadsheet-grid" class="xl-grid">
-      <thead><tr id="col-headers"></tr></thead>
       <tbody id="grid-body"></tbody>
     </table>
   </div>

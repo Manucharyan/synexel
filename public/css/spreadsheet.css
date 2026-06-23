@@ -390,11 +390,21 @@ body{margin:0;font-family:var(--xl-ff);font-size:var(--xl-fs);color:#1a1a1a}
 .xl-ac-desc{font-family:var(--xl-ff);color:#666;font-size:11px}
 
 /* ───────────────── GRID ───────────────── */
+/* col header bar — lives outside the scroll container so it never scrolls away vertically */
+.xl-col-header-bar{
+  flex-shrink:0;
+  overflow-x:scroll;overflow-y:hidden;
+  scrollbar-width:none;-ms-overflow-style:none;
+  background:var(--xl-hdr-bg);
+}
+.xl-col-header-bar::-webkit-scrollbar{display:none}
+.xl-col-header-bar .xl-grid{margin:0}
+
 .xl-grid-scroll{
   flex:1;overflow:auto;min-height:0;
   background:#C8C8C8;position:relative;
 }
-.xl-grid-inner{position:relative;display:block;width:max-content;min-width:100%;min-height:100%}
+.xl-grid-inner{position:relative;display:inline-block;min-width:100%;min-height:100%}
 
 /* fill handle */
 .xl-fill-handle{
@@ -420,9 +430,6 @@ body{margin:0;font-family:var(--xl-ff);font-size:var(--xl-fs);color:#1a1a1a}
 .xl-corner:hover{background:#E8E8E8}
 
 /* col headers */
-.xl-grid thead{
-  position:sticky;top:0;z-index:20;
-}
 .xl-grid thead th{
   position:sticky;top:0;z-index:20;
   background:var(--xl-hdr-bg);border:1px solid var(--xl-grid-line);
