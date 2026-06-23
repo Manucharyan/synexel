@@ -37,6 +37,7 @@ class RangeController extends Controller
             $data['range'],
             $data['column'],
             $data['order'] ?? 'asc',
+            $request->user(),
         );
 
         return response()->json(['data' => $result]);

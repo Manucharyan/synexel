@@ -8,6 +8,7 @@ use App\Domain\Spreadsheet\DTOs\RangeRef;
 use App\Domain\Spreadsheet\Enums\CellValueType;
 use App\Domain\Spreadsheet\Events\CellsUpdated;
 use App\Domain\Spreadsheet\Events\OperationReverted;
+use App\Domain\Spreadsheet\Events\RangeCleared;
 use App\Domain\Spreadsheet\Models\Cell;
 use App\Domain\Spreadsheet\Models\CellChange;
 use App\Domain\Spreadsheet\Models\Sheet;
@@ -205,9 +206,6 @@ class CellBatchService
 
     public function revert(string $operationId, ?User $user = null): array
     {
-        $this->spreadsheetSettings->assertCanAdd($user);
-        $this->spreadsheetSettings->assertCanDelete($user);
-
         $changes = CellChange::query()
             ->where('operation_id', $operationId)
             ->where('reverted', false)
@@ -217,6 +215,8 @@ class CellBatchService
         if ($changes->isEmpty()) {
             throw new \InvalidArgumentException('Operation not found or already reverted.');
         }
+
+        $this->spreadsheetSettings->assertRevertAllowed($user, $changes);
 
         $sheet = Sheet::findOrFail($changes->first()->sheet_id);
         $reverted = 0;

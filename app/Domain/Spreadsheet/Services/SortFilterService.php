@@ -2,10 +2,13 @@
 
 namespace App\Domain\Spreadsheet\Services;
 
+use App\Domain\Spreadsheet\DTOs\RangeRef;
 use App\Domain\Spreadsheet\Events\FilterApplied;
 use App\Domain\Spreadsheet\Events\RangeSorted;
 use App\Domain\Spreadsheet\Models\Cell;
 use App\Domain\Spreadsheet\Models\Sheet;
+use App\Models\User;
+use App\Services\SpreadsheetSettingsService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -13,10 +16,14 @@ class SortFilterService
 {
     public function __construct(
         private readonly CellBatchService $cellBatchService,
+        private readonly SpreadsheetSettingsService $spreadsheetSettings,
     ) {}
 
-    public function sort(Sheet $sheet, string $range, int $column, string $order = 'asc'): array
+    public function sort(Sheet $sheet, string $range, int $column, string $order = 'asc', ?User $user = null): array
     {
+        $this->spreadsheetSettings->assertCanAdd($user);
+        $this->spreadsheetSettings->assertCanDelete($user);
+
         $ref = RangeRef::fromA1($range);
         $sortCol = $ref->startCol + $column - 1;
 
@@ -77,7 +84,7 @@ class SortFilterService
             }
         });
 
-        $result = $this->cellBatchService->batchUpdate($sheet->fresh(), $updates, $operationId, true, 'sort');
+        $result = $this->cellBatchService->batchUpdate($sheet->fresh(), $updates, $operationId, true, 'sort', $user);
 
         event(new RangeSorted(
             $sheet->workbook,

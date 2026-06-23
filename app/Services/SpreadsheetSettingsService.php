@@ -8,6 +8,7 @@ use App\Domain\Spreadsheet\Models\Sheet;
 use App\Exceptions\EditingBlockedException;
 use App\Models\Setting;
 use App\Models\User;
+use Illuminate\Support\Collection;
 
 class SpreadsheetSettingsService
 {
@@ -85,7 +86,7 @@ class SpreadsheetSettingsService
                 continue;
             }
 
-            if ($update->formula !== null || $update->value !== null) {
+            if ($this->isDataAddition($update)) {
                 $addPositions[] = ['row' => $update->row, 'col' => $update->col];
             }
         }
@@ -111,7 +112,7 @@ class SpreadsheetSettingsService
             ->keyBy(fn (Cell $cell) => $cell->row.':'.$cell->col);
 
         foreach ($updates as $update) {
-            if ($update->clear || ($update->formula === null && $update->value === null)) {
+            if ($update->clear || ! $this->isDataAddition($update)) {
                 continue;
             }
 
@@ -129,6 +130,29 @@ class SpreadsheetSettingsService
                 return;
             }
         }
+    }
+
+    /**
+     * @param  Collection<int, \App\Domain\Spreadsheet\Models\CellChange>  $changes
+     */
+    public function assertRevertAllowed(?User $user, Collection $changes): void
+    {
+        if ($this->canAdd($user) && $this->canDelete($user)) {
+            return;
+        }
+
+        foreach ($changes as $change) {
+            if ($change->before === null) {
+                $this->assertCanDelete($user);
+            } elseif ($change->after === null) {
+                $this->assertCanAdd($user);
+            }
+        }
+    }
+
+    private function isDataAddition(CellUpdate $update): bool
+    {
+        return $update->formula !== null || ($update->value !== null && $update->value !== '');
     }
 
     /**

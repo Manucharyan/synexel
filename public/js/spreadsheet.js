@@ -174,7 +174,8 @@ class SynexelApp{
   updatesBlocked(updates){
     for(const u of updates){
       if(u.clear&&this.blockedDelete())return true;
-      if(!u.clear&&(u.formula!==undefined||u.value!==undefined)){
+      const hasData=!u.clear&&(u.formula!==undefined||(u.value!==undefined&&u.value!==''));
+      if(hasData){
         const existing=this.cells.get(this.key(u.row,u.col));
         if(!existing||(!existing.formula&&(existing.value===undefined||existing.value===''))){
           if(this.blockedAdd())return true;
@@ -1333,7 +1334,6 @@ class SynexelApp{
 
   /* ── undo / redo ── */
   async undo(){
-    if(this.blockedAdd()||this.blockedDelete())return;
     const op=this.undoStk.pop();if(!op){this.toast('Nothing to undo','info');return;}
     const forward=this.opChanges.get(op)||[];
     try{
@@ -1351,7 +1351,6 @@ class SynexelApp{
   }
 
   async redo(){
-    if(this.blockedAdd()||this.blockedDelete())return;
     const entry=this.redoStk.pop();if(!entry){this.toast('Nothing to redo','info');return;}
     try{
       const updates=this.changesToUpdates(entry.forward);
@@ -2014,6 +2013,7 @@ class SynexelApp{
 
     /* ── import/export ── */
     APP.querySelector('#input-import')?.addEventListener('change',async e=>{
+      if(this.blockedAdd()){e.target.value='';return;}
       const file=e.target.files?.[0];if(!file)return;
       const form=new FormData();form.append('file',file);
       this.setMode('Importing…');

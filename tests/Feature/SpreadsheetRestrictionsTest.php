@@ -7,6 +7,7 @@ use App\Enums\UserRole;
 use App\Models\User;
 use App\Services\SpreadsheetSettingsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class SpreadsheetRestrictionsTest extends TestCase
@@ -17,28 +18,26 @@ class SpreadsheetRestrictionsTest extends TestCase
 
     private User $admin;
 
-    private string $userToken;
-
-    private string $adminToken;
-
     protected function setUp(): void
     {
         parent::setUp();
 
         $this->user = User::factory()->create(['role' => UserRole::User]);
         $this->admin = User::factory()->create(['role' => UserRole::Admin]);
-        $this->userToken = $this->user->createToken('test')->plainTextToken;
-        $this->adminToken = $this->admin->createToken('test')->plainTextToken;
     }
 
-    private function userHeaders(): array
+    private function asUser(): static
     {
-        return ['Authorization' => 'Bearer '.$this->userToken];
+        Sanctum::actingAs($this->user);
+
+        return $this;
     }
 
-    private function adminHeaders(): array
+    private function asAdmin(): static
     {
-        return ['Authorization' => 'Bearer '.$this->adminToken];
+        Sanctum::actingAs($this->admin);
+
+        return $this;
     }
 
     public function test_admin_can_toggle_spreadsheet_restrictions(): void
@@ -59,12 +58,13 @@ class SpreadsheetRestrictionsTest extends TestCase
     {
         app(SpreadsheetSettingsService::class)->setBlockAdding(true);
 
-        $this->postJson('/api/v1/workbooks', ['name' => 'Blocked'], $this->userHeaders())
+        $this->asUser()
+            ->postJson('/api/v1/workbooks', ['name' => 'Blocked'])
             ->assertForbidden()
             ->assertJsonPath('message', 'Adding data is currently disabled by an administrator.');
 
-        $this->actingAs($this->admin)
-            ->postJson('/api/v1/workbooks', ['name' => 'Allowed'], $this->adminHeaders())
+        $this->asAdmin()
+            ->postJson('/api/v1/workbooks', ['name' => 'Allowed'])
             ->assertCreated();
     }
 
@@ -74,11 +74,15 @@ class SpreadsheetRestrictionsTest extends TestCase
 
         $workbook = app(WorkbookService::class)->create($this->user, 'Delete me');
 
-        $this->deleteJson('/api/v1/workbooks/'.$workbook->id, [], $this->userHeaders())
+        $this->asUser()
+            ->deleteJson('/api/v1/workbooks/'.$workbook->id)
             ->assertForbidden()
             ->assertJsonPath('message', 'Deleting data is currently disabled by an administrator.');
 
-        $this->deleteJson('/api/v1/workbooks/'.$workbook->id, [], $this->adminHeaders())
+        $adminWorkbook = app(WorkbookService::class)->create($this->admin, 'Admin delete me');
+
+        $this->asAdmin()
+            ->deleteJson('/api/v1/workbooks/'.$adminWorkbook->id)
             ->assertOk();
     }
 
@@ -87,24 +91,21 @@ class SpreadsheetRestrictionsTest extends TestCase
         $workbook = app(WorkbookService::class)->create($this->user, 'Edit test');
         $sheet = $workbook->sheets->first();
 
-        $this->patchJson(
+        $this->asUser()->patchJson(
             "/api/v1/workbooks/{$workbook->id}/sheets/{$sheet->id}/cells",
             ['updates' => [['row' => 1, 'col' => 1, 'value' => 'hello']]],
-            $this->userHeaders(),
         )->assertOk();
 
         app(SpreadsheetSettingsService::class)->setBlockAdding(true);
 
-        $this->patchJson(
+        $this->asUser()->patchJson(
             "/api/v1/workbooks/{$workbook->id}/sheets/{$sheet->id}/cells",
             ['updates' => [['row' => 1, 'col' => 1, 'value' => 'updated']]],
-            $this->userHeaders(),
         )->assertOk();
 
-        $this->patchJson(
+        $this->asUser()->patchJson(
             "/api/v1/workbooks/{$workbook->id}/sheets/{$sheet->id}/cells",
             ['updates' => [['row' => 2, 'col' => 1, 'value' => 'new']]],
-            $this->userHeaders(),
         )->assertForbidden();
     }
 
@@ -113,16 +114,68 @@ class SpreadsheetRestrictionsTest extends TestCase
         app(SpreadsheetSettingsService::class)->setBlockAdding(true);
         app(SpreadsheetSettingsService::class)->setBlockDeleting(true);
 
-        $this->getJson('/api/v1/settings/spreadsheet', $this->userHeaders())
+        $this->asUser()->getJson('/api/v1/settings/spreadsheet')
             ->assertOk()
             ->assertJsonPath('data.block_adding', true)
             ->assertJsonPath('data.block_deleting', true)
             ->assertJsonPath('data.can_add', false)
             ->assertJsonPath('data.can_delete', false);
 
-        $this->getJson('/api/v1/settings/spreadsheet', $this->adminHeaders())
+        $this->asAdmin()->getJson('/api/v1/settings/spreadsheet')
             ->assertOk()
             ->assertJsonPath('data.can_add', true)
             ->assertJsonPath('data.can_delete', true);
+    }
+
+    public function test_user_can_still_apply_styles_when_adding_blocked(): void
+    {
+        $workbook = app(WorkbookService::class)->create($this->user, 'Style test');
+        $sheet = $workbook->sheets->first();
+
+        app(SpreadsheetSettingsService::class)->setBlockAdding(true);
+
+        $this->asUser()->patchJson(
+            "/api/v1/workbooks/{$workbook->id}/sheets/{$sheet->id}/cells",
+            ['updates' => [['row' => 1, 'col' => 1, 'value' => '', 'style' => ['bold' => true]]]],
+        )->assertOk();
+    }
+
+    public function test_undo_respects_only_relevant_restriction(): void
+    {
+        $workbook = app(WorkbookService::class)->create($this->user, 'Undo test');
+        $sheet = $workbook->sheets->first();
+
+        $response = $this->asUser()->patchJson(
+            "/api/v1/workbooks/{$workbook->id}/sheets/{$sheet->id}/cells",
+            ['updates' => [['row' => 1, 'col' => 1, 'value' => 'hello']]],
+        )->assertOk();
+
+        $operationId = $response->json('data.operation_id');
+
+        app(SpreadsheetSettingsService::class)->setBlockAdding(true);
+
+        $this->asUser()->postJson('/api/v1/operations/'.$operationId.'/revert')
+            ->assertOk();
+    }
+
+    public function test_sort_blocked_when_adding_restricted(): void
+    {
+        $workbook = app(WorkbookService::class)->create($this->user, 'Sort test');
+        $sheet = $workbook->sheets->first();
+
+        $this->asUser()->patchJson(
+            "/api/v1/workbooks/{$workbook->id}/sheets/{$sheet->id}/cells",
+            ['updates' => [
+                ['row' => 1, 'col' => 1, 'value' => 'b'],
+                ['row' => 2, 'col' => 1, 'value' => 'a'],
+            ]],
+        )->assertOk();
+
+        app(SpreadsheetSettingsService::class)->setBlockAdding(true);
+
+        $this->asUser()->postJson(
+            "/api/v1/workbooks/{$workbook->id}/sheets/{$sheet->id}/sort",
+            ['range' => 'A1:A2', 'column' => 1, 'order' => 'asc'],
+        )->assertForbidden();
     }
 }
