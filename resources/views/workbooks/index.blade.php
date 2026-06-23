@@ -38,7 +38,11 @@
 
         <div id="workbooks-list" class="wb-grid">
             @forelse ($workbooks as $workbook)
-                <article class="wb-card" data-id="{{ $workbook->id }}">
+                @php
+                    $isOwner = (bool) ($workbook->is_owner ?? $workbook->user_id === auth()->id());
+                    $access = $workbook->access_permission ?? ($isOwner ? 'write' : 'read');
+                @endphp
+                <article class="wb-card" data-id="{{ $workbook->id }}" data-owner="{{ $isOwner ? '1' : '0' }}">
                     <a href="{{ route('workbooks.show', $workbook->id) }}" class="wb-card-link">
                         <div class="wb-preview" aria-hidden="true">
                             <div class="wb-preview-bar"></div>
@@ -51,9 +55,18 @@
                         <div class="wb-card-body">
                             <div class="wb-card-top">
                                 <h2>{{ $workbook->name }}</h2>
-                                @if ($workbook->sheets_count ?? 0)
-                                    <span class="wb-badge">{{ $workbook->sheets_count }} {{ Str::plural('sheet', $workbook->sheets_count) }}</span>
-                                @endif
+                                <div class="wb-card-badges">
+                                    @if ($isOwner)
+                                        <span class="perm-badge perm-owner">Owner</span>
+                                    @else
+                                        <span class="perm-badge {{ $access === 'write' ? 'perm-write' : 'perm-read' }}">
+                                            {{ $access === 'write' ? 'Can edit' : 'View only' }}
+                                        </span>
+                                    @endif
+                                    @if ($workbook->sheets_count ?? 0)
+                                        <span class="wb-badge">{{ $workbook->sheets_count }} {{ Str::plural('sheet', $workbook->sheets_count) }}</span>
+                                    @endif
+                                </div>
                             </div>
                             <p class="wb-card-meta">
                                 <svg class="wb-icon-sm" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.2"/><path d="M8 4.5V8l2.5 1.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
@@ -62,14 +75,22 @@
                         </div>
                     </a>
                     <div class="workbook-actions wb-card-actions">
+                        @if ($isOwner)
+                            <a href="{{ route('sharing.index', ['workbook' => $workbook->id]) }}" class="btn-share wb-action" title="Manage sharing">
+                                <svg class="wb-icon-sm" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="5" cy="5" r="2" stroke="currentColor" stroke-width="1.2"/><circle cx="11" cy="5" r="2" stroke="currentColor" stroke-width="1.2"/><path d="M2 12c0-1.6 1.2-2.5 3-2.5s3 .9 3 .9M8 12c0-1.6 1.2-2.5 3-2.5s3 .9 3 .9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+                                Share
+                            </a>
+                        @endif
                         <button type="button" class="btn-export wb-action" data-id="{{ $workbook->id }}" title="Export as .xlsx">
                             <svg class="wb-icon-sm" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 2v8m0 0l-3-3m3 3l3-3M3 12v1.5A1.5 1.5 0 004.5 15h7a1.5 1.5 0 001.5-1.5V12" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
                             Export
                         </button>
+                        @if ($isOwner)
                         <button type="button" class="btn-delete wb-action danger" data-id="{{ $workbook->id }}" title="Delete workbook">
                             <svg class="wb-icon-sm" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 4h10M6 4V2.5h4V4m-7.5 0l.6 9.5h8.8l.6-9.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
                             Delete
                         </button>
+                        @endif
                     </div>
                 </article>
             @empty

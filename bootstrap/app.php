@@ -9,6 +9,7 @@ return Application::configure(basePath: dirname(__DIR__))
         web: __DIR__.'/../routes/web.php',
         api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
+        channels: __DIR__.'/../routes/channels.php',
         health: '/up',
         apiPrefix: 'api',
     )
@@ -31,6 +32,35 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (\App\Exceptions\EditingBlockedException $e, $request) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $e->getMessage()], 403);
+            }
+
+            abort(403, $e->getMessage());
+        });
+
+        $exceptions->render(function (\App\Exceptions\WorkbookAccessDeniedException $e, $request) {
+            try {
+                app(\App\Domain\Spreadsheet\Services\AuditLogService::class)->recordDenied(
+                    \App\Domain\Spreadsheet\Enums\AuditAction::AccessDenied,
+                    $e->getMessage(),
+                    $e->workbook,
+                    details: ['required_permission' => $e->required->value],
+                    user: $request->user(),
+                    resourceType: 'workbook',
+                );
+            } catch (\Throwable) {
+                // Never turn an access-denied response into a 500 (e.g. pending migrations).
+            }
+
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $e->getMessage()], 403);
+            }
+
+            abort(403, $e->getMessage());
+        });
+
+        $exceptions->render(function (\App\Exceptions\UserCapabilityDeniedException $e, $request) {
             if ($request->expectsJson()) {
                 return response()->json(['message' => $e->getMessage()], 403);
             }

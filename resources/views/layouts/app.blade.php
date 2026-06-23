@@ -8,6 +8,10 @@
     @if (session('api_token'))
         <meta name="api-token" content="{{ session('api_token') }}">
     @endif
+    @if (auth()->check())
+        <meta name="user-can-add-cells" content="{{ auth()->user()->isAdmin() || auth()->user()->can_add_cells ? '1' : '0' }}">
+        <meta name="user-can-delete-cells" content="{{ auth()->user()->isAdmin() || auth()->user()->can_delete_cells ? '1' : '0' }}">
+    @endif
     <title>@yield('title', 'Synexel') — {{ config('app.name') }}</title>
     <link rel="stylesheet" href="{{ asset('css/app.css') }}?v=5">
 </head>

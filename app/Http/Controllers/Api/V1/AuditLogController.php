@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Spreadsheet\Enums\SharePermission;
 use App\Domain\Spreadsheet\Services\AuditLogService;
 use App\Domain\Spreadsheet\Services\WorkbookService;
 use App\Http\Controllers\Controller;
@@ -21,6 +22,7 @@ class AuditLogController extends Controller
         $filters = $request->validate([
             'workbook_id' => ['nullable', 'uuid'],
             'action' => ['nullable', 'string', 'max:64'],
+            'outcome' => ['nullable', 'string', 'in:success,denied,failed'],
             'search' => ['nullable', 'string', 'max:255'],
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date'],
@@ -28,7 +30,7 @@ class AuditLogController extends Controller
         ]);
 
         if (! empty($filters['workbook_id'])) {
-            $this->workbookService->findForUser($request->user(), $filters['workbook_id']);
+            $this->workbookService->findForUser($request->user(), $filters['workbook_id'], SharePermission::Read);
         }
 
         $logs = $this->auditLogService->listForUser($request->user(), $filters);

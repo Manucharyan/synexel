@@ -8,11 +8,15 @@ use App\Http\Controllers\Api\V1\ConditionalFormatController;
 use App\Http\Controllers\Api\V1\ImportExportController;
 use App\Http\Controllers\Api\V1\NamedRangeController;
 use App\Http\Controllers\Api\V1\OperationController;
+use App\Http\Controllers\Api\V1\PresenceController;
 use App\Http\Controllers\Api\V1\RangeController;
+use App\Http\Controllers\Api\V1\SharingController;
 use App\Http\Controllers\Api\V1\SheetController;
 use App\Http\Controllers\Api\V1\SpreadsheetSettingsController;
+use App\Http\Controllers\Api\V1\WebhookDeliveryController;
 use App\Http\Controllers\Api\V1\WebhookSubscriptionController;
 use App\Http\Controllers\Api\V1\WorkbookController;
+use App\Http\Controllers\Api\V1\WorkbookShareController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
@@ -23,6 +27,7 @@ Route::prefix('v1')->group(function () {
 
         Route::get('audit-logs', [AuditLogController::class, 'index']);
         Route::get('settings/spreadsheet', [SpreadsheetSettingsController::class, 'show']);
+        Route::get('sharing', [SharingController::class, 'index']);
 
         Route::get('workbooks', [WorkbookController::class, 'index']);
         Route::post('workbooks', [WorkbookController::class, 'store']);
@@ -32,7 +37,20 @@ Route::prefix('v1')->group(function () {
         Route::get('workbooks/{id}/history', [WorkbookController::class, 'history']);
 
         Route::post('workbooks/import', [ImportExportController::class, 'import'])->middleware('throttle:10,1');
+        Route::post('workbooks/import/csv', [ImportExportController::class, 'importCsv'])->middleware('throttle:10,1');
+        Route::post('workbooks/import/google-sheets', [ImportExportController::class, 'importGoogleSheet'])->middleware('throttle:10,1');
         Route::get('workbooks/{id}/export', [ImportExportController::class, 'export'])->middleware('throttle:10,1');
+        Route::get('workbooks/{id}/export/csv', [ImportExportController::class, 'exportCsv'])->middleware('throttle:10,1');
+
+        Route::get('workbooks/{workbookId}/shares', [WorkbookShareController::class, 'index']);
+        Route::post('workbooks/{workbookId}/shares', [WorkbookShareController::class, 'store']);
+        Route::patch('workbooks/{workbookId}/shares/{shareId}', [WorkbookShareController::class, 'update']);
+        Route::delete('workbooks/{workbookId}/shares/{shareId}', [WorkbookShareController::class, 'destroy']);
+
+        Route::get('workbooks/{workbookId}/presence', [PresenceController::class, 'index']);
+        Route::post('workbooks/{workbookId}/presence', [PresenceController::class, 'heartbeat']);
+        Route::delete('workbooks/{workbookId}/presence', [PresenceController::class, 'leave']);
+        Route::get('workbooks/{workbookId}/sync', [PresenceController::class, 'sync']);
 
         Route::post('workbooks/{workbookId}/sheets', [SheetController::class, 'store']);
         Route::get('workbooks/{workbookId}/sheets/{sheetId}', [SheetController::class, 'show']);
@@ -71,6 +89,8 @@ Route::prefix('v1')->group(function () {
 
         Route::get('webhooks', [WebhookSubscriptionController::class, 'index']);
         Route::post('webhooks', [WebhookSubscriptionController::class, 'store']);
+        Route::get('webhooks/deliveries', [WebhookDeliveryController::class, 'index']);
+        Route::get('webhooks/{id}/deliveries', [WebhookDeliveryController::class, 'index']);
         Route::patch('webhooks/{id}', [WebhookSubscriptionController::class, 'update']);
         Route::delete('webhooks/{id}', [WebhookSubscriptionController::class, 'destroy']);
         Route::post('webhooks/{id}/test', [WebhookSubscriptionController::class, 'test']);

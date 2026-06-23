@@ -13,6 +13,8 @@ class AuditLogResource extends JsonResource
             'id' => $this->id,
             'action' => $this->action->value,
             'action_label' => $this->action->label(),
+            'outcome' => $this->outcome?->value ?? 'success',
+            'resource_type' => $this->resource_type,
             'summary' => $this->summary,
             'workbook_id' => $this->workbook_id,
             'workbook_name' => $this->workbook_name,

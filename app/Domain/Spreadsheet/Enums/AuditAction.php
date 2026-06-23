@@ -25,6 +25,25 @@ enum AuditAction: string
     case NamedRangeChanged = 'named_range.changed';
     case ConditionalFormatChanged = 'conditional_format.changed';
     case ChartChanged = 'chart.changed';
+    case ShareAdded = 'share.added';
+    case ShareUpdated = 'share.updated';
+    case ShareRemoved = 'share.removed';
+    case WebhookCreated = 'webhook.created';
+    case WebhookUpdated = 'webhook.updated';
+    case WebhookDeleted = 'webhook.deleted';
+    case WebhookTested = 'webhook.tested';
+    case AccessDenied = 'access.denied';
+    case ImportAttempted = 'import.attempted';
+    case ExportAttempted = 'export.attempted';
+    case CsvImported = 'csv.imported';
+    case CsvExported = 'csv.exported';
+    case GoogleSheetsImported = 'google_sheets.imported';
+    case HyperlinkChanged = 'hyperlink.changed';
+    case PresenceJoined = 'presence.joined';
+    case PresenceLeft = 'presence.left';
+    case CellAddDenied = 'cell.add_denied';
+    case CellDeleteDenied = 'cell.delete_denied';
+    case UserCapabilitiesUpdated = 'user.capabilities_updated';
 
     public function label(): string
     {
@@ -50,6 +69,25 @@ enum AuditAction: string
             self::NamedRangeChanged => 'Changed named range',
             self::ConditionalFormatChanged => 'Changed conditional format',
             self::ChartChanged => 'Changed chart',
+            self::ShareAdded => 'Shared workbook',
+            self::ShareUpdated => 'Updated share permission',
+            self::ShareRemoved => 'Removed share',
+            self::WebhookCreated => 'Created webhook',
+            self::WebhookUpdated => 'Updated webhook',
+            self::WebhookDeleted => 'Deleted webhook',
+            self::WebhookTested => 'Tested webhook',
+            self::AccessDenied => 'Access denied',
+            self::ImportAttempted => 'Import attempted',
+            self::ExportAttempted => 'Export attempted',
+            self::CsvImported => 'Imported CSV',
+            self::CsvExported => 'Exported CSV',
+            self::GoogleSheetsImported => 'Imported Google Sheet',
+            self::HyperlinkChanged => 'Changed hyperlink',
+            self::PresenceJoined => 'Joined workbook',
+            self::PresenceLeft => 'Left workbook',
+            self::CellAddDenied => 'Add cells denied',
+            self::CellDeleteDenied => 'Delete cells denied',
+            self::UserCapabilitiesUpdated => 'Updated user cell permissions',
         };
     }
 }

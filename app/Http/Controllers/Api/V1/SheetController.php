@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Spreadsheet\Enums\SharePermission;
 use App\Domain\Spreadsheet\Services\WorkbookService;
 use App\Http\Controllers\Concerns\ChecksSpreadsheetAccess;
 use App\Http\Controllers\Controller;
@@ -37,7 +38,7 @@ class SheetController extends Controller
 
     public function show(Request $request, string $workbookId, string $sheetId): SheetResource
     {
-        $workbook = $this->workbookService->findForUser($request->user(), $workbookId);
+        $workbook = $this->workbookService->findForUser($request->user(), $workbookId, SharePermission::Read);
         $sheet = $workbook->sheets()->where('id', $sheetId)->firstOrFail();
 
         return new SheetResource($sheet);

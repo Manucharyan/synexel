@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Spreadsheet\Enums\AuditAction;
 use App\Domain\Spreadsheet\Enums\WebhookEvent;
 use App\Domain\Spreadsheet\Models\WebhookSubscription;
+use App\Domain\Spreadsheet\Services\AuditLogService;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\WebhookSubscriptionResource;
 use App\Jobs\DeliverWebhookJob;
@@ -14,6 +16,8 @@ use Illuminate\Support\Str;
 
 class WebhookSubscriptionController extends Controller
 {
+    public function __construct(private readonly AuditLogService $auditLogService) {}
+
     public function index(Request $request): AnonymousResourceCollection
     {
         $subscriptions = WebhookSubscription::query()
@@ -41,6 +45,14 @@ class WebhookSubscriptionController extends Controller
             'active' => $data['active'] ?? true,
         ]);
 
+        $this->auditLogService->record(
+            AuditAction::WebhookCreated,
+            'Created webhook for '.$subscription->url,
+            target: $subscription->url,
+            details: ['events' => $subscription->events],
+            resourceType: 'webhook',
+        );
+
         return new WebhookSubscriptionResource($subscription);
     }
 
@@ -60,6 +72,14 @@ class WebhookSubscriptionController extends Controller
 
         $subscription->update($data);
 
+        $this->auditLogService->record(
+            AuditAction::WebhookUpdated,
+            'Updated webhook '.$subscription->url,
+            target: $subscription->url,
+            details: $data,
+            resourceType: 'webhook',
+        );
+
         return new WebhookSubscriptionResource($subscription->fresh());
     }
 
@@ -70,7 +90,15 @@ class WebhookSubscriptionController extends Controller
             ->where('id', $id)
             ->firstOrFail();
 
+        $url = $subscription->url;
         $subscription->delete();
+
+        $this->auditLogService->record(
+            AuditAction::WebhookDeleted,
+            'Deleted webhook '.$url,
+            target: $url,
+            resourceType: 'webhook',
+        );
 
         return response()->json(['message' => 'Webhook subscription deleted.']);
     }
@@ -87,6 +115,13 @@ class WebhookSubscriptionController extends Controller
             'timestamp' => now()->toIso8601String(),
             'message' => 'This is a test webhook delivery.',
         ]);
+
+        $this->auditLogService->record(
+            AuditAction::WebhookTested,
+            'Queued test delivery for '.$subscription->url,
+            target: $subscription->url,
+            resourceType: 'webhook',
+        );
 
         return response()->json(['message' => 'Test webhook queued for delivery.']);
     }

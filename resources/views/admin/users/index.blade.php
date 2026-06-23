@@ -10,13 +10,22 @@
         <section class="wb-hero wb-hero-compact">
             <div class="wb-hero-copy">
                 <h1>User management</h1>
-                <p>Add accounts for your team. Each user signs in with their username and password.</p>
+                <p>Add accounts and control whether users can add or delete cell data in workbooks.</p>
             </div>
         </section>
 
         @if ($status)
             <div class="alert-success">{{ $status }}</div>
         @endif
+
+        @if ($errors->has('capabilities'))
+            <div class="error-box">{{ $errors->first('capabilities') }}</div>
+        @endif
+
+        <div class="admin-capability-legend">
+            <span><strong>Can add</strong> — type, paste, import, edit cells</span>
+            <span><strong>Can delete</strong> — clear cells, delete rows/columns</span>
+        </div>
 
         <div class="admin-grid">
             <section class="admin-panel">
@@ -75,6 +84,7 @@
                             <tr>
                                 <th>User</th>
                                 <th>Role</th>
+                                <th>Cell permissions</th>
                                 <th>Status</th>
                                 <th>Created</th>
                                 <th></th>
@@ -89,6 +99,28 @@
                                     </td>
                                     <td>
                                         <span class="role-badge role-badge-{{ $user->role->value }}">{{ $user->role->label() }}</span>
+                                    </td>
+                                    <td>
+                                        @if ($user->isAdmin())
+                                            <span class="perm-badge perm-write">Full access</span>
+                                        @elseif (auth()->id() !== $user->id)
+                                            <form method="POST" action="{{ route('admin.users.capabilities', $user) }}" class="capability-form">
+                                                @csrf
+                                                @method('PATCH')
+                                                <label class="cap-check">
+                                                    <input type="hidden" name="can_add_cells" value="0">
+                                                    <input type="checkbox" name="can_add_cells" value="1" @checked($user->can_add_cells) onchange="this.form.submit()">
+                                                    Can add
+                                                </label>
+                                                <label class="cap-check">
+                                                    <input type="hidden" name="can_delete_cells" value="0">
+                                                    <input type="checkbox" name="can_delete_cells" value="1" @checked($user->can_delete_cells) onchange="this.form.submit()">
+                                                    Can delete
+                                                </label>
+                                            </form>
+                                        @else
+                                            <span class="admin-muted">—</span>
+                                        @endif
                                     </td>
                                     <td>
                                         @if ($user->isActive())

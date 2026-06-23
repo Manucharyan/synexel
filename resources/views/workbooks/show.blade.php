@@ -1,14 +1,15 @@
 @extends('layouts.app')
 @section('title', $workbook->name)
 @section('content')
-<link rel="stylesheet" href="{{ asset('css/spreadsheet.css') }}?v=34">
+<link rel="stylesheet" href="{{ asset('css/spreadsheet.css') }}?v=35">
 
 <div class="app-page">
 @include('partials.app-header', ['active' => ''])
 
 <div id="app" data-workbook-id="{{ $workbook->id }}" data-sheets='@json($workbook->sheets)'
      data-can-add="{{ ($spreadsheetAccess['can_add'] ?? true) ? '1' : '0' }}"
-     data-can-delete="{{ ($spreadsheetAccess['can_delete'] ?? true) ? '1' : '0' }}">
+     data-can-delete="{{ ($spreadsheetAccess['can_delete'] ?? true) ? '1' : '0' }}"
+     data-access="{{ $accessPermission }}" data-is-owner="{{ $isOwner ? '1' : '0' }}">
 
 @if (!($spreadsheetAccess['can_add'] ?? true) || !($spreadsheetAccess['can_delete'] ?? true))
 @php
@@ -61,16 +62,23 @@
     <span class="xl-title-app">— Synexel</span>
   </div>
   <div class="xl-title-right">
+    <div id="presence-bar" class="xl-presence-bar" title="Who is viewing"></div>
+    <button id="btn-share" class="xl-qat-btn" title="Share workbook" @if(!$isOwner) style="display:none" @endif>
+      <svg viewBox="0 0 16 16"><circle cx="5" cy="5" r="2.5" stroke="currentColor" stroke-width="1.3" fill="none"/><circle cx="11" cy="5" r="2.5" stroke="currentColor" stroke-width="1.3" fill="none"/><path d="M2 13c0-2 1.5-3 3-3s3 1 3 1M8 13c0-2 1.5-3 3-3s3 1 3 1" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round"/></svg>
+      Share
+    </button>
+    @if($accessPermission === 'read')
+      <span class="xl-readonly-badge">Read only</span>
+    @endif
     <span id="save-status" class="xl-save-status"></span>
-    <label class="xl-qat-btn" title="Import .xlsx / .xls">
+    <label class="xl-qat-btn" title="Import .xlsx / .xls / .csv">
       <svg viewBox="0 0 16 16"><path d="M8 2v9m-4-4l4 4 4-4M2 12v1a1 1 0 001 1h10a1 1 0 001-1v-1" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
       Import
-      <input id="input-import" type="file" accept=".xlsx,.xls" style="display:none">
+      <input id="input-import" type="file" accept=".xlsx,.xls,.csv" style="display:none">
     </label>
-    <button id="btn-export" class="xl-qat-btn" title="Export as .xlsx">
-      <svg viewBox="0 0 16 16"><path d="M8 11V2m-4 5l4-4 4 4M2 12v1a1 1 0 001 1h10a1 1 0 001-1v-1" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      Export
-    </button>
+    <button id="btn-import-google" class="xl-qat-btn" title="Import from Google Sheets">Google</button>
+    <button id="btn-export" class="xl-qat-btn" title="Export as .xlsx">XLSX</button>
+    <button id="btn-export-csv" class="xl-qat-btn" title="Export as CSV">CSV</button>
   </div>
 </div>
 
@@ -275,6 +283,7 @@
             <svg viewBox="0 0 20 20" class="xl-icon-sm"><path d="M10 2l2.2 4.5 4.9.7-3.5 3.4.8 4.9L10 13.8 5.6 15.5l.8-4.9L3 7.2l4.9-.7L10 2z" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linejoin="round"/></svg>
             Named Range
           </button>
+          <button class="xl-fx-main-btn" id="btn-hyperlink" title="Insert or edit hyperlink">Link</button>
         </div>
         <div class="xl-fx-library">
           <div class="xl-fx-category">
@@ -478,6 +487,8 @@
 
 {{-- ══════════════ CONTEXT MENU ══════════════ --}}
 <div id="ctx-menu" class="xl-ctx" style="display:none">
+  <div class="xl-ctx-item" data-action="hyperlink">🔗 Insert Link</div>
+  <div class="xl-ctx-sep"></div>
   <div class="xl-ctx-item" data-action="edit-cell">
     <svg viewBox="0 0 16 16"><path d="M3 13h10M11 3l2 2-7 7H4V10l7-7z" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
     Edit Cell
@@ -633,11 +644,74 @@
   </div>
 </div>
 
+{{-- Share modal --}}
+<div id="modal-share" class="xl-modal" style="display:none">
+  <div class="xl-modal-box xl-modal-sm">
+    <div class="xl-modal-hdr">
+      <span class="xl-modal-title">Share workbook</span>
+      <button class="xl-modal-x" data-close="modal-share">✕</button>
+    </div>
+    <div class="xl-modal-body">
+      <p class="xl-help-text">Use <a href="{{ route('sharing.index', ['workbook' => $workbook->id]) }}">Sharing page</a> for full management. <strong>View only</strong> blocks add/edit/delete in cells.</p>
+      <div class="xl-field-row"><label>Email</label><input id="share-email" class="xl-field" type="email" placeholder="user@example.com"></div>
+      <div class="xl-field-row"><label>Permission</label>
+        <select id="share-permission" class="xl-field">
+          <option value="read">View only — cannot add/delete cells</option>
+          <option value="write">Can edit — add, edit, delete cells</option>
+        </select>
+      </div>
+      <div id="share-list" class="share-list"></div>
+    </div>
+    <div class="xl-modal-ftr">
+      <button id="btn-share-add" class="xl-mbtn xl-mbtn-primary">Share</button>
+      <button data-close="modal-share" class="xl-mbtn">Close</button>
+    </div>
+  </div>
+</div>
+
+{{-- Hyperlink modal --}}
+<div id="modal-hyperlink" class="xl-modal" style="display:none">
+  <div class="xl-modal-box xl-modal-sm">
+    <div class="xl-modal-hdr">
+      <span class="xl-modal-title">Hyperlink</span>
+      <button class="xl-modal-x" data-close="modal-hyperlink">✕</button>
+    </div>
+    <div class="xl-modal-body">
+      <div class="xl-field-row"><label>URL</label><input id="hyperlink-url" class="xl-field" type="url" placeholder="https://example.com"></div>
+      <div class="xl-field-row"><label>Display text</label><input id="hyperlink-text" class="xl-field" type="text" placeholder="Optional label"></div>
+    </div>
+    <div class="xl-modal-ftr">
+      <button id="btn-hyperlink-ok" class="xl-mbtn xl-mbtn-primary">Apply</button>
+      <button id="btn-hyperlink-remove" class="xl-mbtn">Remove link</button>
+      <button data-close="modal-hyperlink" class="xl-mbtn">Cancel</button>
+    </div>
+  </div>
+</div>
+
+{{-- Google Sheets import --}}
+<div id="modal-google" class="xl-modal" style="display:none">
+  <div class="xl-modal-box xl-modal-sm">
+    <div class="xl-modal-hdr">
+      <span class="xl-modal-title">Import Google Sheet</span>
+      <button class="xl-modal-x" data-close="modal-google">✕</button>
+    </div>
+    <div class="xl-modal-body">
+      <div class="xl-field-row"><label>Sheet URL or ID</label><input id="google-url" class="xl-field" type="text" placeholder="https://docs.google.com/spreadsheets/d/..."></div>
+      <div class="xl-field-row"><label>Name (optional)</label><input id="google-name" class="xl-field" type="text"></div>
+      <p class="xl-help-text">The sheet must be published or publicly accessible.</p>
+    </div>
+    <div class="xl-modal-ftr">
+      <button id="btn-google-import" class="xl-mbtn xl-mbtn-primary">Import</button>
+      <button data-close="modal-google" class="xl-mbtn">Cancel</button>
+    </div>
+  </div>
+</div>
+
 {{-- Toast container --}}
 <div id="toast-wrap" class="xl-toasts"></div>
 
 </div>{{-- #app --}}
 </div>{{-- .app-page --}}
 
-<script src="{{ asset('js/spreadsheet.js') }}?v=34" defer></script>
+<script src="{{ asset('js/spreadsheet.js') }}?v=35" defer></script>
 @endsection

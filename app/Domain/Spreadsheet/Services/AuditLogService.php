@@ -4,6 +4,7 @@ namespace App\Domain\Spreadsheet\Services;
 
 use App\Domain\Spreadsheet\DTOs\A1Notation;
 use App\Domain\Spreadsheet\Enums\AuditAction;
+use App\Domain\Spreadsheet\Enums\AuditOutcome;
 use App\Domain\Spreadsheet\Models\Sheet;
 use App\Domain\Spreadsheet\Models\Workbook;
 use App\Models\AuditLog;
@@ -22,6 +23,8 @@ class AuditLogService
         ?string $operationId = null,
         array $details = [],
         ?User $user = null,
+        AuditOutcome $outcome = AuditOutcome::Success,
+        ?string $resourceType = null,
     ): AuditLog {
         $user ??= AuditContext::user();
 
@@ -32,6 +35,8 @@ class AuditLogService
         return AuditLog::create([
             'user_id' => $user?->id,
             'action' => $action,
+            'outcome' => $outcome,
+            'resource_type' => $resourceType,
             'summary' => $summary,
             'workbook_id' => $workbook?->id,
             'workbook_name' => $workbook?->name,
@@ -46,6 +51,25 @@ class AuditLogService
         ]);
     }
 
+    public function recordDenied(
+        AuditAction $action,
+        string $summary,
+        ?Workbook $workbook = null,
+        array $details = [],
+        ?User $user = null,
+        ?string $resourceType = null,
+    ): AuditLog {
+        return $this->record(
+            $action,
+            $summary,
+            $workbook,
+            details: $details,
+            user: $user,
+            outcome: AuditOutcome::Denied,
+            resourceType: $resourceType,
+        );
+    }
+
     public function listForUser(User $user, array $filters = []): LengthAwarePaginator
     {
         $query = AuditLog::query()
@@ -55,6 +79,11 @@ class AuditLogService
                     ->orWhereIn('workbook_id', function ($sub) use ($user) {
                         $sub->select('id')
                             ->from('workbooks')
+                            ->where('user_id', $user->id);
+                    })
+                    ->orWhereIn('workbook_id', function ($sub) use ($user) {
+                        $sub->select('workbook_id')
+                            ->from('workbook_shares')
                             ->where('user_id', $user->id);
                     });
             })
@@ -70,6 +99,10 @@ class AuditLogService
 
         if (! empty($filters['user_id'])) {
             $query->where('user_id', $filters['user_id']);
+        }
+
+        if (! empty($filters['outcome'])) {
+            $query->where('outcome', $filters['outcome']);
         }
 
         if (! empty($filters['from'])) {
