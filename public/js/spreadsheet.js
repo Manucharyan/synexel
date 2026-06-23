@@ -159,26 +159,75 @@ class SynexelApp{
     this.loadSheet();
   }
 
-  blockedAdd(){
+  blockedAdd(opts={}){
     if(this.access.canAdd)return false;
-    this.toast('Adding data is disabled by an administrator.','error');
+    if(!opts.silent)this.flashLockBanner();
     return true;
   }
 
-  blockedDelete(){
+  blockedDelete(opts={}){
     if(this.access.canDelete)return false;
-    this.toast('Deleting data is disabled by an administrator.','error');
+    if(!opts.silent)this.flashLockBanner();
     return true;
+  }
+
+  isCellEmpty(r,c){
+    const cell=this.cells.get(this.key(r,c));
+    return !cell||(!cell.formula&&(cell.value===undefined||cell.value===''));
+  }
+
+  wouldAddAt(r,c){
+    return !this.access.canAdd&&this.isCellEmpty(r,c);
+  }
+
+  updateWouldAdd(upd){
+    if(upd.clear)return false;
+    const hasData=upd.formula!==undefined||(upd.value!==undefined&&upd.value!=='');
+    return hasData&&this.wouldAddAt(upd.row,upd.col);
+  }
+
+  flashLockBanner(){
+    const b=APP.querySelector('#lock-banner');
+    if(!b)return;
+    b.classList.remove('xl-lock-banner-flash');
+    void b.offsetWidth;
+    b.classList.add('xl-lock-banner-flash');
+    b.scrollIntoView({block:'nearest'});
+  }
+
+  parseApiError(e){
+    const raw=e?.message||String(e);
+    try{
+      const j=JSON.parse(raw);
+      return j.message||raw;
+    }catch{
+      return raw;
+    }
+  }
+
+  isRestrictionError(msg){
+    return /disabled by an administrator/i.test(msg)||/currently disabled/i.test(msg);
+  }
+
+  syncAccessUi(){
+    const ac=this.activeCellCoords();
+    const addLocked=this.wouldAddAt(ac.r,ac.c);
+    if(this.$.fxBar){
+      this.$.fxBar.readOnly=addLocked;
+      this.$.fxBar.classList.toggle('xl-fxbar-locked',addLocked);
+      this.$.fxBar.title=addLocked?'Adding data is disabled for empty cells':'';
+    }
+    if(this.$.gridBody)this.$.gridBody.classList.toggle('xl-grid-add-locked',!this.access.canAdd);
   }
 
   updatesBlocked(updates){
     for(const u of updates){
-      if(u.clear&&this.blockedDelete())return true;
+      if(u.clear&&this.blockedDelete({silent:true}))return true;
       const hasData=!u.clear&&(u.formula!==undefined||(u.value!==undefined&&u.value!==''));
       if(hasData){
         const existing=this.cells.get(this.key(u.row,u.col));
         if(!existing||(!existing.formula&&(existing.value===undefined||existing.value===''))){
-          if(this.blockedAdd())return true;
+          if(this.blockedAdd({silent:true}))return true;
         }
       }
     }
@@ -425,7 +474,7 @@ class SynexelApp{
         this.cells.set(this.key(c.row,c.col),c);
       });
       this.loadMergeLayout();
-      this.renderAll();this.setMode('Ready');
+      this.renderAll();this.setMode('Ready');this.syncAccessUi();
     }catch(e){this.toast('Load error: '+e.message,'error');this.setMode('Error')}
   }
 
@@ -763,6 +812,7 @@ class SynexelApp{
     if(this.editing&&this.editMode==='fx'){
       const ac=this.editAt||this.activeCellCoords();
       const upd=this.buildUpd(ac.r,ac.c,this.$.fxBar.value);
+      if(this.updateWouldAdd(upd)){this.endEdit();this.flashLockBanner();return;}
       this.applyLocalUpdate(upd);
       this.endEdit();
       if(upd.formula||upd.value!==undefined||upd.clear)this.flush([upd]);
@@ -773,6 +823,7 @@ class SynexelApp{
   async applyFormula(fx){
     const ac=this.activeCellCoords();
     const upd=this.buildUpd(ac.r,ac.c,fx);
+    if(this.updateWouldAdd(upd)){this.flashLockBanner();return;}
     this.applyLocalUpdate(upd);
     this.$.fxBar.value=fx;
     this.endEdit();
@@ -840,7 +891,14 @@ class SynexelApp{
       this.syncRibbon();
       this.setMode('Ready');this.$.saveDot.className='xl-save-dot';
     }catch(e){
-      this.toast('Save failed: '+e.message,'error');this.setMode('Error');this.$.saveDot.className='xl-save-dot error';
+      const msg=this.parseApiError(e);
+      if(this.isRestrictionError(msg)){
+        await this.loadSheet();
+        this.flashLockBanner();
+        this.setMode('Ready');this.$.saveDot.className='xl-save-dot';
+        return;
+      }
+      this.toast('Save failed: '+msg,'error');this.setMode('Error');this.$.saveDot.className='xl-save-dot error';
       await this.loadSheet();
     }
   }
@@ -929,6 +987,7 @@ class SynexelApp{
   renderAll(){
     for(let r=1;r<=this.ROWS;r++)for(let c=1;c<=this.COLS;c++)this.renderCell(r,c);
     this.renderHdrs();this.updateName();this.updateStatus();this.syncRibbon();this.positionFillHandle();
+    this.syncAccessUi();
   }
 
   renderHdrs(){
@@ -1123,8 +1182,7 @@ class SynexelApp{
     if(ma){r=ma.r;c=ma.c;td=this.cellEl(r,c);if(!td)return;}
     if(!this.isActiveCell(r,c))this.select(r,c);
     const cell=this.cells.get(this.key(r,c));
-    const isEmpty=!cell||(!cell.formula&&(cell.value===undefined||cell.value===''));
-    if(isEmpty&&this.blockedAdd())return;
+    if(this.wouldAddAt(r,c)){this.flashLockBanner();return;}
     this.editing=true;
     this.editMode='cell';
     this.editAt={r,c};
@@ -1162,6 +1220,13 @@ class SynexelApp{
       if(!this.editing)return;
       inp.removeEventListener('blur',commit);
       const upd=this.buildUpd(r,c,inp.value);
+      if(this.updateWouldAdd(upd)){
+        this.endEdit();
+        this.renderCell(r,c);
+        this.positionFillHandle();
+        this.flashLockBanner();
+        return;
+      }
       this.applyLocalUpdate(upd);
       this.endEdit();
       this.positionFillHandle();
@@ -1182,6 +1247,7 @@ class SynexelApp{
   async commitFx(){
     const ac=this.activeCellCoords();
     const upd=this.buildUpd(ac.r,ac.c,this.$.fxBar.value);
+    if(this.updateWouldAdd(upd)){this.endEdit();this.flashLockBanner();return;}
     this.applyLocalUpdate(upd);
     this.endEdit();
     if(upd.formula||upd.value!==undefined||upd.clear)await this.flush([upd]);
@@ -1691,6 +1757,7 @@ class SynexelApp{
     this.$.gridBody.addEventListener('dblclick',e=>{
       e.preventDefault();
       const hit=this.resolveEventCell(e);if(!hit)return;
+      if(this.wouldAddAt(hit.r,hit.c)){this.flashLockBanner();return;}
       this.startEdit(hit.td);
     });
 
@@ -1732,10 +1799,12 @@ class SynexelApp{
       if(e.key==='Tab')      {e.preventDefault();this.move(0,sh?-1:1);return;}
       if(e.key==='Enter')    {e.preventDefault();this.move(sh?-1:1,0);return;}
       if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();this.clearSel();return;}
-      if(e.key==='F2')       {e.preventDefault();this.editActiveCell();return;}
+      if(e.key==='F2')       {e.preventDefault();if(this.wouldAddAt(this.activeCellCoords().r,this.activeCellCoords().c)){this.flashLockBanner();return;}this.editActiveCell();return;}
       if(e.key==='Escape')   {this.copySrc=null;this.renderAll();return;}
 
       if(!e.ctrlKey&&!e.metaKey&&!e.altKey&&e.key.length===1){
+        const ac=this.activeCellCoords();
+        if(this.wouldAddAt(ac.r,ac.c)){e.preventDefault();this.flashLockBanner();return;}
         const td=this.anchorCellEl(this.sel.r1,this.sel.c1);
         if(td){e.preventDefault();this.startEdit(td,e.key);}
       }
@@ -1784,10 +1853,15 @@ class SynexelApp{
 
     /* ── formula bar ── */
     this.$.fxBar.addEventListener('focus',()=>{
+      const ac=this.activeCellCoords();
+      if(this.wouldAddAt(ac.r,ac.c)){
+        this.$.fxBar.blur();
+        this.flashLockBanner();
+        return;
+      }
       this.editing=true;
       this.editMode='fx';
-      this.editAt=this.activeCellCoords();
-      const ac=this.editAt;
+      this.editAt=ac;
       this.$.fxBar.value=this.editVal(this.cells.get(this.key(ac.r,ac.c)));
       this.syncFxPreview();
       const fxc=APP.querySelector('#btn-fx-cancel'),fxo=APP.querySelector('#btn-fx-commit');

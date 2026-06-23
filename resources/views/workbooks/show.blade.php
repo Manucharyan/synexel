@@ -1,7 +1,7 @@
 @extends('layouts.app')
 @section('title', $workbook->name)
 @section('content')
-<link rel="stylesheet" href="{{ asset('css/spreadsheet.css') }}?v=28">
+<link rel="stylesheet" href="{{ asset('css/spreadsheet.css') }}?v=29">
 
 <div class="app-page">
 @include('partials.app-header', ['active' => ''])
@@ -11,14 +11,25 @@
      data-can-delete="{{ ($spreadsheetAccess['can_delete'] ?? true) ? '1' : '0' }}">
 
 @if (!($spreadsheetAccess['can_add'] ?? true) || !($spreadsheetAccess['can_delete'] ?? true))
-<div id="lock-banner" class="xl-lock-banner">
-  @if (!($spreadsheetAccess['can_add'] ?? true) && !($spreadsheetAccess['can_delete'] ?? true))
-    Adding and deleting data is disabled. You can still edit existing cell values. Open Settings to change this.
-  @elseif (!($spreadsheetAccess['can_add'] ?? true))
-    Adding data is disabled. You can still edit existing cell values. Open Settings to change this.
-  @else
-    Deleting data is disabled. Open Settings to change this.
-  @endif
+<div id="lock-banner" class="xl-lock-banner" role="alert">
+  <div class="xl-lock-banner-inner">
+    <span class="xl-lock-banner-icon" aria-hidden="true">!</span>
+    <div class="xl-lock-banner-text">
+      @if (!($spreadsheetAccess['can_add'] ?? true) && !($spreadsheetAccess['can_delete'] ?? true))
+        <strong>Adding and deleting data is disabled.</strong>
+        <span>You can view the sheet and edit cells that already contain data. New entries in empty cells are not allowed.</span>
+      @elseif (!($spreadsheetAccess['can_add'] ?? true))
+        <strong>Adding data is disabled.</strong>
+        <span>You cannot type in empty cells, paste, import, or insert rows/columns. Existing cell values can still be changed.</span>
+      @else
+        <strong>Deleting data is disabled.</strong>
+        <span>You cannot clear cells, cut, delete rows/columns, or remove workbooks.</span>
+      @endif
+      @if (auth()->user()->isAdmin())
+        <a href="{{ route('admin.settings.index') }}" class="xl-lock-banner-link">Open Settings to change this</a>
+      @endif
+    </div>
+  </div>
 </div>
 @endif
 
@@ -616,5 +627,5 @@
 </div>{{-- #app --}}
 </div>{{-- .app-page --}}
 
-<script src="{{ asset('js/spreadsheet.js') }}?v=28" defer></script>
+<script src="{{ asset('js/spreadsheet.js') }}?v=29" defer></script>
 @endsection
