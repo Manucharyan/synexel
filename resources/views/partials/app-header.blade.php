@@ -14,6 +14,7 @@
             <a href="{{ route('workbooks.index') }}" class="wb-nav-link {{ $active === 'workbooks' ? 'active' : '' }}">Workbooks</a>
             @if (auth()->user()->isAdmin())
                 <a href="{{ route('admin.users.index') }}" class="wb-nav-link {{ $active === 'users' ? 'active' : '' }}">Users</a>
+                <a href="{{ route('admin.settings.index') }}" class="wb-nav-link {{ $active === 'settings' ? 'active' : '' }}">Settings</a>
             @endif
             <a href="{{ route('audit.index') }}" class="wb-nav-link {{ $active === 'audit' ? 'active' : '' }}">Activity Log</a>
             <a href="/docs/api" class="wb-nav-link {{ $active === 'api' ? 'active' : '' }}">API Docs</a>

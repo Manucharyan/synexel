@@ -32,6 +32,11 @@ body{margin:0;font-family:var(--xl-ff);font-size:var(--xl-fs);color:#1a1a1a}
   background:#fff;
 }
 .app-page > #app{height:100%}
+.xl-lock-banner{
+  background:#fff3cd;color:#664d03;border-bottom:1px solid #ffe69c;
+  padding:.5rem 1rem;font-size:12px;text-align:center;flex-shrink:0;
+}
+.xl-disabled,.xl-ribbon-icon:disabled,.xl-qat-btn:disabled{opacity:.45;pointer-events:none;cursor:not-allowed;}
 
 /* ───────────────── TITLE BAR ───────────────── */
 .xl-title{

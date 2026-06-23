@@ -42,7 +42,34 @@
     const workbooksApp = document.getElementById('workbooks-app');
     if (!workbooksApp) return;
 
+    const canAdd = workbooksApp.dataset.canAdd !== '0';
+    const canDelete = workbooksApp.dataset.canDelete !== '0';
+
+    function applyWorkbookRestrictions() {
+        if (!canAdd) {
+            document.getElementById('btn-new-workbook')?.setAttribute('disabled', 'disabled');
+            document.querySelectorAll('#input-import, .upload-btn input[type="file"]').forEach((el) => {
+                el.disabled = true;
+                el.closest('.upload-btn')?.classList.add('disabled');
+            });
+            document.querySelectorAll('.wb-empty-actions .btn').forEach((btn) => {
+                if (btn.textContent.toLowerCase().includes('create') || btn.textContent.toLowerCase().includes('import')) {
+                    btn.setAttribute('disabled', 'disabled');
+                }
+            });
+        }
+        if (!canDelete) {
+            document.querySelectorAll('.btn-delete').forEach((btn) => btn.setAttribute('disabled', 'disabled'));
+        }
+    }
+
+    applyWorkbookRestrictions();
+
     document.getElementById('btn-new-workbook')?.addEventListener('click', async () => {
+        if (!canAdd) {
+            alert('Adding workbooks is currently disabled by an administrator.');
+            return;
+        }
         const name = prompt('Workbook name', 'Untitled workbook');
         if (!name) return;
         try {
@@ -52,6 +79,11 @@
     });
 
     document.getElementById('input-import')?.addEventListener('change', async (e) => {
+        if (!canAdd) {
+            alert('Importing workbooks is currently disabled by an administrator.');
+            e.target.value = '';
+            return;
+        }
         const file = e.target.files?.[0];
         if (!file) return;
         const form = new FormData();
@@ -71,6 +103,10 @@
 
     document.querySelectorAll('.btn-delete').forEach((btn) => {
         btn.addEventListener('click', async () => {
+            if (!canDelete) {
+                alert('Deleting workbooks is currently disabled by an administrator.');
+                return;
+            }
             if (!confirm('Delete this workbook?')) return;
             try {
                 await api('/workbooks/' + btn.dataset.id, { method: 'DELETE' });

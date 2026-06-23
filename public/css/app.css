@@ -259,6 +259,12 @@ button, input { font: inherit; }
 .admin-table td strong { display: block; }
 .admin-muted { display: block; font-size: .75rem; color: var(--synexel-muted); }
 .admin-actions { display: flex; gap: .5rem; flex-wrap: wrap; white-space: nowrap; }
+.admin-setting-row { padding: 1rem 0; border-bottom: 1px solid #f1f5f9; }
+.admin-setting-row:last-of-type { border-bottom: 0; }
+.admin-toggle { display: flex; gap: .75rem; align-items: flex-start; cursor: pointer; }
+.admin-toggle input[type="checkbox"] { margin-top: .2rem; width: 1rem; height: 1rem; }
+.admin-toggle-label strong { display: block; margin-bottom: .25rem; }
+.upload-btn.disabled { opacity: .55; pointer-events: none; }
 .inline-form { display: inline; }
 .btn-sm { padding: .35rem .65rem; font-size: .75rem; }
 .btn-danger { background: #fff; border: 1px solid #fecaca; color: #dc2626; border-radius: .5rem; cursor: pointer; font-weight: 600; }

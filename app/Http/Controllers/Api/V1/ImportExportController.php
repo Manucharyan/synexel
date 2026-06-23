@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Domain\Spreadsheet\Services\WorkbookService;
 use App\Domain\Spreadsheet\Services\XlsxExportService;
 use App\Domain\Spreadsheet\Services\XlsxImportService;
+use App\Http\Controllers\Concerns\ChecksSpreadsheetAccess;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\WorkbookResource;
 use Illuminate\Http\JsonResponse;
@@ -13,6 +14,8 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ImportExportController extends Controller
 {
+    use ChecksSpreadsheetAccess;
+
     public function __construct(
         private readonly WorkbookService $workbookService,
         private readonly XlsxImportService $importService,
@@ -21,6 +24,8 @@ class ImportExportController extends Controller
 
     public function import(Request $request): WorkbookResource
     {
+        $this->assertCanAddSpreadsheetData($request);
+
         $request->validate([
             'file' => ['required', 'file', 'mimes:xlsx,xls', 'max:20480'],
             'name' => ['nullable', 'string', 'max:255'],
@@ -47,6 +52,8 @@ class ImportExportController extends Controller
 
     public function importSheet(Request $request, string $workbookId, string $sheetId): JsonResponse
     {
+        $this->assertCanAddSpreadsheetData($request);
+
         $workbook = $this->workbookService->findForUser($request->user(), $workbookId);
         $sheet = $workbook->sheets()->where('id', $sheetId)->firstOrFail();
 

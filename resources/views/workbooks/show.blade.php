@@ -6,7 +6,21 @@
 <div class="app-page">
 @include('partials.app-header', ['active' => ''])
 
-<div id="app" data-workbook-id="{{ $workbook->id }}" data-sheets='@json($workbook->sheets)'>
+<div id="app" data-workbook-id="{{ $workbook->id }}" data-sheets='@json($workbook->sheets)'
+     data-can-add="{{ ($spreadsheetAccess['can_add'] ?? true) ? '1' : '0' }}"
+     data-can-delete="{{ ($spreadsheetAccess['can_delete'] ?? true) ? '1' : '0' }}">
+
+@if (!($spreadsheetAccess['can_add'] ?? true) || !($spreadsheetAccess['can_delete'] ?? true))
+<div id="lock-banner" class="xl-lock-banner">
+  @if (!($spreadsheetAccess['can_add'] ?? true) && !($spreadsheetAccess['can_delete'] ?? true))
+    Adding and deleting data is disabled by an administrator. You can still view and edit existing cell values.
+  @elseif (!($spreadsheetAccess['can_add'] ?? true))
+    Adding data is disabled by an administrator.
+  @else
+    Deleting data is disabled by an administrator.
+  @endif
+</div>
+@endif
 
 {{-- ══════════════ TITLE BAR ══════════════ --}}
 <div class="xl-title">

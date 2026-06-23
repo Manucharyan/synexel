@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Domain\Spreadsheet\Services\SheetStructureService;
 use App\Domain\Spreadsheet\Services\SortFilterService;
 use App\Domain\Spreadsheet\Services\WorkbookService;
+use App\Http\Controllers\Concerns\ChecksSpreadsheetAccess;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\SheetResource;
 use Illuminate\Http\JsonResponse;
@@ -12,6 +13,8 @@ use Illuminate\Http\Request;
 
 class RangeController extends Controller
 {
+    use ChecksSpreadsheetAccess;
+
     public function __construct(
         private readonly WorkbookService $workbookService,
         private readonly SortFilterService $sortFilterService,
@@ -57,6 +60,8 @@ class RangeController extends Controller
 
     public function deleteRows(Request $request, string $workbookId, string $sheetId): JsonResponse
     {
+        $this->assertCanDeleteSpreadsheetData($request);
+
         $workbook = $this->workbookService->findForUser($request->user(), $workbookId);
         $sheet = $workbook->sheets()->where('id', $sheetId)->firstOrFail();
 
@@ -76,6 +81,8 @@ class RangeController extends Controller
 
     public function deleteColumns(Request $request, string $workbookId, string $sheetId): JsonResponse
     {
+        $this->assertCanDeleteSpreadsheetData($request);
+
         $workbook = $this->workbookService->findForUser($request->user(), $workbookId);
         $sheet = $workbook->sheets()->where('id', $sheetId)->firstOrFail();
 
@@ -95,6 +102,8 @@ class RangeController extends Controller
 
     public function insertRows(Request $request, string $workbookId, string $sheetId): JsonResponse
     {
+        $this->assertCanAddSpreadsheetData($request);
+
         $workbook = $this->workbookService->findForUser($request->user(), $workbookId);
         $sheet = $workbook->sheets()->where('id', $sheetId)->firstOrFail();
 
@@ -114,6 +123,8 @@ class RangeController extends Controller
 
     public function insertColumns(Request $request, string $workbookId, string $sheetId): JsonResponse
     {
+        $this->assertCanAddSpreadsheetData($request);
+
         $workbook = $this->workbookService->findForUser($request->user(), $workbookId);
         $sheet = $workbook->sheets()->where('id', $sheetId)->firstOrFail();
 

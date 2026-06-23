@@ -90,6 +90,10 @@ class SynexelApp{
     this.wbId      = APP.dataset.workbookId;
     this.sheets    = JSON.parse(APP.dataset.sheets||'[]');
     this.activeSht = this.sheets[0]?.id??null;
+    this.access    = {
+      canAdd: APP.dataset.canAdd !== '0',
+      canDelete: APP.dataset.canDelete !== '0',
+    };
 
     this.ROWS=200; this.COLS=26;
 
@@ -150,8 +154,51 @@ class SynexelApp{
     this.renderTabs();
     this.initSwatches();
     this.initBorderPanel();
+    this.applyAccessRestrictions();
     this.bindAll();
     this.loadSheet();
+  }
+
+  blockedAdd(){
+    if(this.access.canAdd)return false;
+    this.toast('Adding data is disabled by an administrator.','error');
+    return true;
+  }
+
+  blockedDelete(){
+    if(this.access.canDelete)return false;
+    this.toast('Deleting data is disabled by an administrator.','error');
+    return true;
+  }
+
+  updatesBlocked(updates){
+    for(const u of updates){
+      if(u.clear&&this.blockedDelete())return true;
+      if(!u.clear&&(u.formula!==undefined||u.value!==undefined)){
+        const existing=this.cells.get(this.key(u.row,u.col));
+        if(!existing||(!existing.formula&&(existing.value===undefined||existing.value===''))){
+          if(this.blockedAdd())return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  applyAccessRestrictions(){
+    if(this.access.canAdd&&this.access.canDelete)return;
+    const disable=(id)=>{
+      const el=APP.querySelector('#'+id);
+      if(el){el.disabled=true;el.classList.add('xl-disabled');}
+    };
+    if(!this.access.canAdd){
+      ['btn-paste','btn-paste-values','btn-ins-row','btn-ins-row-above','btn-ins-row-below',
+       'btn-ins-col','btn-ins-col-left','btn-ins-col-right','btn-add-sheet'].forEach(disable);
+      const imp=APP.querySelector('#input-import');
+      if(imp){imp.disabled=true;imp.closest('label')?.classList.add('xl-disabled');}
+    }
+    if(!this.access.canDelete){
+      ['btn-cut','btn-clear','btn-del-row','btn-del-row2','btn-del-col','btn-del-col2'].forEach(disable);
+    }
   }
 
   /* ── key helpers ── */
@@ -763,6 +810,7 @@ class SynexelApp{
 
   async flush(updates,opts={}){
     if(!this.activeSht||!updates.length)return;
+    if(this.updatesBlocked(updates))return;
     this.setMode('Saving…');this.$.saveDot.className='xl-save-dot saving';
     try{
       const res=await api(`/workbooks/${this.wbId}/sheets/${this.activeSht}/cells`,{
@@ -1073,13 +1121,15 @@ class SynexelApp{
     const ma=this.mergeAnchorCoords(r,c);
     if(ma){r=ma.r;c=ma.c;td=this.cellEl(r,c);if(!td)return;}
     if(!this.isActiveCell(r,c))this.select(r,c);
+    const cell=this.cells.get(this.key(r,c));
+    const isEmpty=!cell||(!cell.formula&&(cell.value===undefined||cell.value===''));
+    if(isEmpty&&this.blockedAdd())return;
     this.editing=true;
     this.editMode='cell';
     this.editAt={r,c};
     const fxc=APP.querySelector('#btn-fx-cancel'),fxo=APP.querySelector('#btn-fx-commit');
     if(fxc)fxc.style.display='';if(fxo)fxo.style.display='';
     this.$.fillHnd.style.display='none';
-    const cell=this.cells.get(this.key(r,c));
     const val=initial??this.editVal(cell);
     td.innerHTML='';
     const inp=document.createElement('input');
@@ -1173,6 +1223,7 @@ class SynexelApp{
 
   /* ── clipboard ── */
   copy(cut=false){
+    if(cut&&this.blockedDelete())return;
     const s=this.norm();
     const data=[];
     for(let r=s.r1;r<=s.r2;r++){
@@ -1191,6 +1242,7 @@ class SynexelApp{
 
   async paste(valOnly=false){
     if(!this.clip)return;
+    if(this.blockedAdd())return;
     const updates=[];
     const{data,rows,cols}=this.clip;
     for(let dr=0;dr<rows;dr++)for(let dc=0;dc<cols;dc++){
@@ -1207,6 +1259,7 @@ class SynexelApp{
   }
 
   async clearSel(){
+    if(this.blockedDelete())return;
     const s=this.norm();
     await this.unmergeSelection(s);
     const updates=[];
@@ -1234,6 +1287,7 @@ class SynexelApp{
 
   /* ── fill ── */
   async fillDown(){
+    if(this.blockedAdd())return;
     const s=this.norm();if(s.r1===s.r2)return;
     const updates=[];
     for(let c=s.c1;c<=s.c2;c++){
@@ -1252,6 +1306,7 @@ class SynexelApp{
   }
 
   async fillRight(){
+    if(this.blockedAdd())return;
     const s=this.norm();if(s.c1===s.c2)return;
     const updates=[];
     for(let r=s.r1;r<=s.r2;r++){
@@ -1278,6 +1333,7 @@ class SynexelApp{
 
   /* ── undo / redo ── */
   async undo(){
+    if(this.blockedAdd()||this.blockedDelete())return;
     const op=this.undoStk.pop();if(!op){this.toast('Nothing to undo','info');return;}
     const forward=this.opChanges.get(op)||[];
     try{
@@ -1295,6 +1351,7 @@ class SynexelApp{
   }
 
   async redo(){
+    if(this.blockedAdd()||this.blockedDelete())return;
     const entry=this.redoStk.pop();if(!entry){this.toast('Nothing to redo','info');return;}
     try{
       const updates=this.changesToUpdates(entry.forward);
@@ -1335,6 +1392,7 @@ class SynexelApp{
   }
 
   async insertRow(above=true){
+    if(this.blockedAdd())return;
     const s=this.norm();
     const atRow=above?s.r1:s.r2+1;
     try{
@@ -1349,6 +1407,7 @@ class SynexelApp{
   }
 
   async deleteRow(){
+    if(this.blockedDelete())return;
     const s=this.norm();
     const count=s.r2-s.r1+1;
     if(count>=this.ROWS){this.toast('Cannot delete all rows','error');return;}
@@ -1365,6 +1424,7 @@ class SynexelApp{
   }
 
   async insertCol(left=true){
+    if(this.blockedAdd())return;
     const s=this.norm();
     const atCol=left?s.c1:s.c2+1;
     try{
@@ -1379,6 +1439,7 @@ class SynexelApp{
   }
 
   async deleteCol(){
+    if(this.blockedDelete())return;
     const s=this.norm();
     const count=s.c2-s.c1+1;
     if(count>=this.COLS){this.toast('Cannot delete all columns','error');return;}
@@ -1501,6 +1562,7 @@ class SynexelApp{
   }
 
   async addSheet(){
+    if(this.blockedAdd())return;
     const name=this.nextSheetName();
     try{
       const res=await api(`/workbooks/${this.wbId}/sheets`,{method:'POST',body:{name}});
