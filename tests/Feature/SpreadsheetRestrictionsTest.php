@@ -64,8 +64,8 @@ class SpreadsheetRestrictionsTest extends TestCase
             ->assertJsonPath('message', 'Adding data is currently disabled by an administrator.');
 
         $this->asAdmin()
-            ->postJson('/api/v1/workbooks', ['name' => 'Allowed'])
-            ->assertCreated();
+            ->postJson('/api/v1/workbooks', ['name' => 'Also blocked'])
+            ->assertForbidden();
     }
 
     public function test_regular_user_blocked_from_deleting_when_enabled(): void
@@ -83,7 +83,7 @@ class SpreadsheetRestrictionsTest extends TestCase
 
         $this->asAdmin()
             ->deleteJson('/api/v1/workbooks/'.$adminWorkbook->id)
-            ->assertOk();
+            ->assertForbidden();
     }
 
     public function test_user_can_still_edit_existing_cells_when_adding_blocked(): void
@@ -123,8 +123,8 @@ class SpreadsheetRestrictionsTest extends TestCase
 
         $this->asAdmin()->getJson('/api/v1/settings/spreadsheet')
             ->assertOk()
-            ->assertJsonPath('data.can_add', true)
-            ->assertJsonPath('data.can_delete', true);
+            ->assertJsonPath('data.can_add', false)
+            ->assertJsonPath('data.can_delete', false);
     }
 
     public function test_user_can_still_apply_styles_when_adding_blocked(): void

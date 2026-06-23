@@ -80,8 +80,7 @@ $r = api('POST', '/api/v1/workbooks', ['name' => 'Blocked'], $user);
 check($r->getStatusCode() === 403, 'User blocked from creating workbook');
 
 $r = api('POST', '/api/v1/workbooks', ['name' => 'Admin OK'], $admin);
-$adminWorkbookId = json_decode($r->getContent(), true)['data']['id'] ?? null;
-check($r->getStatusCode() === 201 && $adminWorkbookId !== null, 'Admin can still create workbook');
+check($r->getStatusCode() === 403, 'Admin also blocked from creating workbook when adding disabled');
 
 $workbook = app(App\Domain\Spreadsheet\Services\WorkbookService::class)->create($user, 'User WB');
 $sheet = $workbook->sheets->first();
@@ -113,10 +112,10 @@ $r = api('PATCH', "/api/v1/workbooks/{$workbook->id}/sheets/{$sheet->id}/cells",
 check($r->getStatusCode() === 403, 'User blocked from clearing cell');
 
 $settings->setBlockAdding(true);
-$addResponse = api('PATCH', "/api/v1/workbooks/{$workbook->id}/sheets/{$sheet->id}/cells", [
-    'updates' => [['row' => 4, 'col' => 1, 'value' => 'undo me']],
-], $admin);
-$operationId = json_decode($addResponse->getContent(), true)['data']['operation_id'] ?? null;
+$addResponse = app(App\Domain\Spreadsheet\Services\CellBatchService::class)->batchUpdate($sheet, [
+    ['row' => 4, 'col' => 1, 'value' => 'undo me'],
+]);
+$operationId = $addResponse['operation_id'] ?? null;
 
 $r = api('POST', "/api/v1/operations/{$operationId}/revert", [], $user);
 check($r->getStatusCode() === 200, 'User can undo an add when only adding is blocked');
@@ -134,7 +133,7 @@ $settings->setBlockAdding(false);
 $settings->setBlockDeleting(false);
 $admin->delete();
 $user->delete();
-App\Domain\Spreadsheet\Models\Workbook::query()->whereIn('id', array_filter([$adminWorkbookId, $workbook->id]))->delete();
+App\Domain\Spreadsheet\Models\Workbook::query()->where('id', $workbook->id)->delete();
 
 echo "\n--- Result: {$passed} passed, {$failed} failed ---\n";
 exit($failed > 0 ? 1 : 0);

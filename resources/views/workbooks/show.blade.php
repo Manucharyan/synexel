@@ -13,11 +13,11 @@
 @if (!($spreadsheetAccess['can_add'] ?? true) || !($spreadsheetAccess['can_delete'] ?? true))
 <div id="lock-banner" class="xl-lock-banner">
   @if (!($spreadsheetAccess['can_add'] ?? true) && !($spreadsheetAccess['can_delete'] ?? true))
-    Adding and deleting data is disabled by an administrator. You can still view and edit existing cell values.
+    Adding and deleting data is disabled. You can still edit existing cell values. Open Settings to change this.
   @elseif (!($spreadsheetAccess['can_add'] ?? true))
-    Adding data is disabled by an administrator.
+    Adding data is disabled. You can still edit existing cell values. Open Settings to change this.
   @else
-    Deleting data is disabled by an administrator.
+    Deleting data is disabled. Open Settings to change this.
   @endif
 </div>
 @endif

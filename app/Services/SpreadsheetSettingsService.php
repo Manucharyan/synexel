@@ -36,22 +36,14 @@ class SpreadsheetSettingsService
         $this->setBool(self::KEY_BLOCK_DELETING, $enabled);
     }
 
-    public function canAdd(?User $user): bool
+    public function canAdd(?User $user = null): bool
     {
-        if (! $this->isBlockAddingEnabled()) {
-            return true;
-        }
-
-        return $user?->isAdmin() ?? false;
+        return ! $this->isBlockAddingEnabled();
     }
 
-    public function canDelete(?User $user): bool
+    public function canDelete(?User $user = null): bool
     {
-        if (! $this->isBlockDeletingEnabled()) {
-            return true;
-        }
-
-        return $user?->isAdmin() ?? false;
+        return ! $this->isBlockDeletingEnabled();
     }
 
     public function assertCanAdd(?User $user): void

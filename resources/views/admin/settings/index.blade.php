@@ -10,7 +10,7 @@
         <section class="wb-hero wb-hero-compact">
             <div class="wb-hero-copy">
                 <h1>Spreadsheet restrictions</h1>
-                <p>Control whether users can add or delete data on the Excel board. Administrators can always edit.</p>
+                <p>Control whether anyone can add or delete data on the Excel board. Applies to all accounts, including administrators. Use Settings to turn restrictions off again.</p>
             </div>
         </section>
 
@@ -31,7 +31,7 @@
                             <input type="checkbox" name="block_adding" value="1" @checked($blockAdding)>
                             <span class="admin-toggle-label">
                                 <strong>Block adding data</strong>
-                                <span class="admin-muted">Prevents users from creating workbooks, importing files, entering new cell values, pasting, and inserting rows or columns.</span>
+                                <span class="admin-muted">Prevents everyone from creating workbooks, importing files, entering new cell values, pasting, and inserting rows or columns.</span>
                             </span>
                         </label>
                     </div>
@@ -42,7 +42,7 @@
                             <input type="checkbox" name="block_deleting" value="1" @checked($blockDeleting)>
                             <span class="admin-toggle-label">
                                 <strong>Block deleting data</strong>
-                                <span class="admin-muted">Prevents users from deleting workbooks, clearing cells, cutting data, and removing rows or columns.</span>
+                                <span class="admin-muted">Prevents everyone from deleting workbooks, clearing cells, cutting data, and removing rows or columns.</span>
                             </span>
                         </label>
                     </div>
