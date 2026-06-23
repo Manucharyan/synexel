@@ -442,6 +442,15 @@ body{margin:0;font-family:var(--xl-ff);font-size:var(--xl-fs);color:#1a1a1a}
 .xl-grid tbody th.row-sel{background:var(--xl-hdr-selb);color:var(--xl-hdr-sel)}
 .xl-grid tbody th.row-act{background:#BDD7EE;color:#1F497D;font-weight:600}
 
+/* freeze panes */
+.xl-grid thead th.col-frozen{background:var(--xl-hdr-bg)}
+.xl-grid tbody td.col-frozen{background:#fff}
+.xl-grid tbody tr.row-freeze-edge td,
+.xl-grid tbody tr.row-freeze-edge th{border-bottom:2px solid #1a73e8 !important}
+.xl-grid thead th.col-freeze-edge,
+.xl-grid tbody td.col-freeze-edge,
+.xl-grid tbody th.col-freeze-edge{border-right:2px solid #1a73e8 !important}
+
 /* col resizer */
 .col-resizer{
   position:absolute;right:0;top:0;width:5px;height:100%;

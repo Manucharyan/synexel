@@ -325,6 +325,7 @@ class SynexelApp{
       }
       this.$.gridBody.appendChild(tr);this.cellEls.push(rowEls);
     }
+    if(this.frozenR||this.frozenC) this.setFreeze(this.frozenR,this.frozenC);
   }
 
   resizeCol(e,col,th){
@@ -1404,13 +1405,65 @@ class SynexelApp{
 
   /* ── freeze ── */
   setFreeze(rows,cols){
-    this.frozenR=rows;this.frozenC=cols;
-    const hc=this.$.colHdr.children;
-    for(let c=1;c<=this.COLS;c++)if(hc[c])hc[c].classList.toggle('col-frozen',c<=cols);
-    for(let r=1;r<=this.ROWS;r++){
-      const rh=this.$.gridBody.children[r-1]?.children[0];
-      if(rh)rh.classList.toggle('row-frozen',r<=rows);
+    this.frozenR=rows; this.frozenC=cols;
+    const HDR_H=20;      // thead row height (px)
+    const ROW_HDR_W=46;  // tbody th (row header) width (px)
+
+    // Frozen column headers: make them sticky along the X axis
+    const hc=this.$.colHdr.children; // [0]=corner, [1]=A, ...
+    for(let c=1;c<=this.COLS;c++){
+      const th=hc[c]; if(!th) continue;
+      if(c<=cols){
+        let left=ROW_HDR_W;
+        for(let cc=1;cc<c;cc++) left+=this.colW[cc-1];
+        th.classList.add('col-frozen');
+        th.style.left=left+'px';
+        th.style.zIndex=22;
+        th.classList.toggle('col-freeze-edge', c===cols);
+      } else {
+        th.classList.remove('col-frozen','col-freeze-edge');
+        th.style.left=''; th.style.zIndex='';
+      }
     }
+
+    // Rows and data cells
+    for(let r=1;r<=this.ROWS;r++){
+      const tr=this.$.gridBody.children[r-1]; if(!tr) continue;
+      const rh=tr.children[0]; // row header th
+
+      if(r<=rows){
+        // Sticky row: calculate cumulative top offset
+        let top=HDR_H;
+        for(let rr=1;rr<r;rr++) top+=this.rowH[rr-1];
+        tr.style.position='sticky';
+        tr.style.top=top+'px';
+        tr.style.zIndex=4;
+        tr.classList.add('row-frozen');
+        tr.classList.toggle('row-freeze-edge', r===rows);
+        if(rh){ rh.style.zIndex=12; }
+      } else {
+        tr.style.position=''; tr.style.top=''; tr.style.zIndex='';
+        tr.classList.remove('row-frozen','row-freeze-edge');
+        if(rh){ rh.style.zIndex=''; }
+      }
+
+      for(let c=1;c<=this.COLS;c++){
+        const td=this.cellEls[r-1]?.[c-1]; if(!td) continue;
+        if(c<=cols){
+          let left=ROW_HDR_W;
+          for(let cc=1;cc<c;cc++) left+=this.colW[cc-1];
+          td.classList.add('col-frozen');
+          td.classList.toggle('col-freeze-edge', c===cols);
+          td.style.position='sticky';
+          td.style.left=left+'px';
+          td.style.zIndex=r<=rows?6:3;
+        } else {
+          td.classList.remove('col-frozen','col-freeze-edge');
+          td.style.position=''; td.style.left=''; td.style.zIndex='';
+        }
+      }
+    }
+
     APP.querySelector('#btn-freeze-row')?.classList.toggle('active',rows>0);
     APP.querySelector('#btn-freeze-col')?.classList.toggle('active',cols>0);
     this.toast(rows||cols?'Panes frozen':'Panes unfrozen','info');
