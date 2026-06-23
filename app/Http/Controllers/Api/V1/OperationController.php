@@ -24,7 +24,7 @@ class OperationController extends Controller
 
         $this->workbookService->findForUser($request->user(), $change->workbook_id);
 
-        $result = $this->cellBatchService->revert($operationId);
+        $result = $this->cellBatchService->revert($operationId, $request->user());
 
         return response()->json(['data' => $result]);
     }

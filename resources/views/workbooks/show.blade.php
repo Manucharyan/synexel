@@ -1,12 +1,43 @@
 @extends('layouts.app')
 @section('title', $workbook->name)
 @section('content')
-<link rel="stylesheet" href="{{ asset('css/spreadsheet.css') }}?v=32">
+<link rel="stylesheet" href="{{ asset('css/spreadsheet.css') }}?v=34">
 
 <div class="app-page">
 @include('partials.app-header', ['active' => ''])
 
-<div id="app" data-workbook-id="{{ $workbook->id }}" data-sheets='@json($workbook->sheets)'>
+<div id="app" data-workbook-id="{{ $workbook->id }}" data-sheets='@json($workbook->sheets)'
+     data-can-add="{{ ($spreadsheetAccess['can_add'] ?? true) ? '1' : '0' }}"
+     data-can-delete="{{ ($spreadsheetAccess['can_delete'] ?? true) ? '1' : '0' }}">
+
+@if (!($spreadsheetAccess['can_add'] ?? true) || !($spreadsheetAccess['can_delete'] ?? true))
+@php
+    $lockKey = 'a'.(int)($spreadsheetAccess['can_add'] ?? true).'d'.(int)($spreadsheetAccess['can_delete'] ?? true);
+@endphp
+<div id="lock-banner" class="xl-lock-banner" role="alert" data-lock-key="{{ $lockKey }}">
+  <div class="xl-lock-banner-inner">
+    <div class="xl-lock-banner-icon" aria-hidden="true">
+      <svg viewBox="0 0 20 20" width="18" height="18" fill="none"><path d="M6 8V6a4 4 0 018 0v2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><rect x="4" y="8" width="12" height="9" rx="1.5" stroke="currentColor" stroke-width="1.6"/><path d="M10 11.5v2.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+    </div>
+    <div class="xl-lock-banner-body">
+      @if (!($spreadsheetAccess['can_add'] ?? true) && !($spreadsheetAccess['can_delete'] ?? true))
+        <div class="xl-lock-banner-title">Spreadsheet is in restricted mode</div>
+        <div class="xl-lock-banner-desc">Adding and deleting data is disabled. You can still edit cells that already have values.</div>
+      @elseif (!($spreadsheetAccess['can_add'] ?? true))
+        <div class="xl-lock-banner-title">Adding data is disabled</div>
+        <div class="xl-lock-banner-desc">Empty cells, paste, import, and insert actions are blocked. Existing values can still be edited.</div>
+      @else
+        <div class="xl-lock-banner-title">Deleting data is disabled</div>
+        <div class="xl-lock-banner-desc">Clear, cut, and delete actions are blocked.</div>
+      @endif
+      @if (auth()->user()->isAdmin())
+        <a href="{{ route('admin.settings.index') }}" class="xl-lock-banner-link">Change in Settings</a>
+      @endif
+    </div>
+    <button type="button" class="xl-lock-banner-close" aria-label="Dismiss notice" title="Dismiss">&times;</button>
+  </div>
+</div>
+@endif
 
 {{-- ══════════════ TITLE BAR ══════════════ --}}
 <div class="xl-title">
@@ -608,5 +639,5 @@
 </div>{{-- #app --}}
 </div>{{-- .app-page --}}
 
-<script src="{{ asset('js/spreadsheet.js') }}?v=33" defer></script>
+<script src="{{ asset('js/spreadsheet.js') }}?v=34" defer></script>
 @endsection

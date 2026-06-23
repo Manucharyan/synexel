@@ -3,6 +3,7 @@
 use App\Http\Controllers\Web\AuditLogPageController;
 use App\Http\Controllers\Web\LoginController;
 use App\Http\Controllers\Web\SetupController;
+use App\Http\Controllers\Web\SpreadsheetSettingsController;
 use App\Http\Controllers\Web\UserManagementController;
 use App\Http\Controllers\Web\WorkbookPageController;
 use App\Support\InstallService;
@@ -57,5 +58,8 @@ Route::middleware(['installed', 'auth'])->group(function () {
         Route::post('/users', [UserManagementController::class, 'store'])->name('users.store');
         Route::patch('/users/{user}/active', [UserManagementController::class, 'toggleActive'])->name('users.toggle');
         Route::delete('/users/{user}', [UserManagementController::class, 'destroy'])->name('users.destroy');
+
+        Route::get('/settings', [SpreadsheetSettingsController::class, 'index'])->name('settings.index');
+        Route::patch('/settings', [SpreadsheetSettingsController::class, 'update'])->name('settings.update');
     });
 });

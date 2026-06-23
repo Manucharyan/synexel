@@ -90,6 +90,10 @@ class SynexelApp{
     this.wbId      = APP.dataset.workbookId;
     this.sheets    = JSON.parse(APP.dataset.sheets||'[]');
     this.activeSht = this.sheets[0]?.id??null;
+    this.access    = {
+      canAdd: APP.dataset.canAdd !== '0',
+      canDelete: APP.dataset.canDelete !== '0',
+    };
 
     this.ROWS=200; this.COLS=26;
 
@@ -151,8 +155,118 @@ class SynexelApp{
     this.renderTabs();
     this.initSwatches();
     this.initBorderPanel();
+    this.applyAccessRestrictions();
+    this.initLockBanner();
     this.bindAll();
     this.loadSheet();
+  }
+
+  initLockBanner(){
+    const b=APP.querySelector('#lock-banner');
+    if(!b)return;
+    const key=b.dataset.lockKey||'default';
+    const sk='xl-lock-dismiss-'+key;
+    if(sessionStorage.getItem(sk)==='1')b.classList.add('is-hidden');
+    b.querySelector('.xl-lock-banner-close')?.addEventListener('click',()=>{
+      b.classList.add('is-hidden');
+      sessionStorage.setItem(sk,'1');
+    });
+  }
+
+  blockedAdd(opts={}){
+    if(this.access.canAdd)return false;
+    if(!opts.silent)this.flashLockBanner('add');
+    return true;
+  }
+
+  blockedDelete(opts={}){
+    if(this.access.canDelete)return false;
+    if(!opts.silent)this.flashLockBanner('delete');
+    return true;
+  }
+
+  isCellEmpty(r,c){
+    const cell=this.cells.get(this.key(r,c));
+    return !cell||(!cell.formula&&(cell.value===undefined||cell.value===''));
+  }
+
+  wouldAddAt(r,c){
+    return !this.access.canAdd&&this.isCellEmpty(r,c);
+  }
+
+  updateWouldAdd(upd){
+    if(upd.clear)return false;
+    const hasData=upd.formula!==undefined||(upd.value!==undefined&&upd.value!=='');
+    return hasData&&this.wouldAddAt(upd.row,upd.col);
+  }
+
+  flashLockBanner(kind='add'){
+    const b=APP.querySelector('#lock-banner');
+    if(b&&!b.classList.contains('is-hidden')){
+      b.classList.remove('xl-lock-banner-flash');
+      void b.offsetWidth;
+      b.classList.add('xl-lock-banner-flash');
+    }
+    const msg=kind==='delete'
+      ? 'Deleting data is disabled.'
+      : 'Adding data is disabled.';
+    this.toast(msg,'lock',{dedupe:true});
+  }
+
+  parseApiError(e){
+    const raw=e?.message||String(e);
+    try{
+      const j=JSON.parse(raw);
+      return j.message||raw;
+    }catch{
+      return raw;
+    }
+  }
+
+  isRestrictionError(msg){
+    return /disabled by an administrator/i.test(msg)||/currently disabled/i.test(msg);
+  }
+
+  syncAccessUi(){
+    const ac=this.activeCellCoords();
+    const addLocked=this.wouldAddAt(ac.r,ac.c);
+    if(this.$.fxBar){
+      this.$.fxBar.readOnly=addLocked;
+      this.$.fxBar.classList.toggle('xl-fxbar-locked',addLocked);
+      this.$.fxBar.title=addLocked?'Adding data is disabled for empty cells':'';
+    }
+    if(this.$.gridBody)this.$.gridBody.classList.toggle('xl-grid-add-locked',!this.access.canAdd);
+  }
+
+  updatesBlocked(updates){
+    for(const u of updates){
+      if(u.clear&&this.blockedDelete({silent:true}))return true;
+      const hasData=!u.clear&&(u.formula!==undefined||(u.value!==undefined&&u.value!==''));
+      if(hasData){
+        const existing=this.cells.get(this.key(u.row,u.col));
+        if(!existing||(!existing.formula&&(existing.value===undefined||existing.value===''))){
+          if(this.blockedAdd({silent:true}))return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  applyAccessRestrictions(){
+    if(this.access.canAdd&&this.access.canDelete)return;
+    const disable=(id)=>{
+      const el=APP.querySelector('#'+id);
+      if(el){el.disabled=true;el.classList.add('xl-disabled');}
+    };
+    if(!this.access.canAdd){
+      ['btn-paste','btn-paste-values','btn-ins-row','btn-ins-row-above','btn-ins-row-below',
+       'btn-ins-col','btn-ins-col-left','btn-ins-col-right','btn-add-sheet'].forEach(disable);
+      const imp=APP.querySelector('#input-import');
+      if(imp){imp.disabled=true;imp.closest('label')?.classList.add('xl-disabled');}
+    }
+    if(!this.access.canDelete){
+      ['btn-cut','btn-clear','btn-del-row','btn-del-row2','btn-del-col','btn-del-col2'].forEach(disable);
+    }
   }
 
   /* ── key helpers ── */
@@ -387,7 +501,7 @@ class SynexelApp{
         this.cells.set(this.key(c.row,c.col),c);
       });
       this.loadMergeLayout();
-      this.renderAll();this.setMode('Ready');
+      this.renderAll();this.setMode('Ready');this.syncAccessUi();
     }catch(e){this.toast('Load error: '+e.message,'error');this.setMode('Error')}
   }
 
@@ -725,6 +839,7 @@ class SynexelApp{
     if(this.editing&&this.editMode==='fx'){
       const ac=this.editAt||this.activeCellCoords();
       const upd=this.buildUpd(ac.r,ac.c,this.$.fxBar.value);
+      if(this.updateWouldAdd(upd)){this.endEdit();this.flashLockBanner();return;}
       this.applyLocalUpdate(upd);
       this.endEdit();
       if(upd.formula||upd.value!==undefined||upd.clear)this.flush([upd]);
@@ -735,6 +850,7 @@ class SynexelApp{
   async applyFormula(fx){
     const ac=this.activeCellCoords();
     const upd=this.buildUpd(ac.r,ac.c,fx);
+    if(this.updateWouldAdd(upd)){this.flashLockBanner();return;}
     this.applyLocalUpdate(upd);
     this.$.fxBar.value=fx;
     this.endEdit();
@@ -773,6 +889,7 @@ class SynexelApp{
 
   async flush(updates,opts={}){
     if(!this.activeSht||!updates.length)return;
+    if(this.updatesBlocked(updates))return;
     this.setMode('Saving…');this.$.saveDot.className='xl-save-dot saving';
     try{
       const res=await api(`/workbooks/${this.wbId}/sheets/${this.activeSht}/cells`,{
@@ -801,7 +918,14 @@ class SynexelApp{
       this.syncRibbon();
       this.setMode('Ready');this.$.saveDot.className='xl-save-dot';
     }catch(e){
-      this.toast('Save failed: '+e.message,'error');this.setMode('Error');this.$.saveDot.className='xl-save-dot error';
+      const msg=this.parseApiError(e);
+      if(this.isRestrictionError(msg)){
+        await this.loadSheet();
+        this.flashLockBanner(/delet/i.test(msg)?'delete':'add');
+        this.setMode('Ready');this.$.saveDot.className='xl-save-dot';
+        return;
+      }
+      this.toast('Save failed: '+msg,'error');this.setMode('Error');this.$.saveDot.className='xl-save-dot error';
       await this.loadSheet();
     }
   }
@@ -891,6 +1015,7 @@ class SynexelApp{
     for(let r=1;r<=this.ROWS;r++)for(let c=1;c<=this.COLS;c++)this.renderCell(r,c);
     this.renderHdrs();this.updateName();this.updateStatus();this.syncRibbon();this.positionFillHandle();
     if(this.frozenR||this.frozenC) this.setFreeze(this.frozenR,this.frozenC,true);
+    this.syncAccessUi();
   }
 
   renderHdrs(){
@@ -1084,13 +1209,14 @@ class SynexelApp{
     const ma=this.mergeAnchorCoords(r,c);
     if(ma){r=ma.r;c=ma.c;td=this.cellEl(r,c);if(!td)return;}
     if(!this.isActiveCell(r,c))this.select(r,c);
+    const cell=this.cells.get(this.key(r,c));
+    if(this.wouldAddAt(r,c)){this.flashLockBanner();return;}
     this.editing=true;
     this.editMode='cell';
     this.editAt={r,c};
     const fxc=APP.querySelector('#btn-fx-cancel'),fxo=APP.querySelector('#btn-fx-commit');
     if(fxc)fxc.style.display='';if(fxo)fxo.style.display='';
     this.$.fillHnd.style.display='none';
-    const cell=this.cells.get(this.key(r,c));
     const val=initial??this.editVal(cell);
     td.innerHTML='';
     const inp=document.createElement('input');
@@ -1122,6 +1248,13 @@ class SynexelApp{
       if(!this.editing)return;
       inp.removeEventListener('blur',commit);
       const upd=this.buildUpd(r,c,inp.value);
+      if(this.updateWouldAdd(upd)){
+        this.endEdit();
+        this.renderCell(r,c);
+        this.positionFillHandle();
+        this.flashLockBanner();
+        return;
+      }
       this.applyLocalUpdate(upd);
       this.endEdit();
       this.positionFillHandle();
@@ -1142,6 +1275,7 @@ class SynexelApp{
   async commitFx(){
     const ac=this.activeCellCoords();
     const upd=this.buildUpd(ac.r,ac.c,this.$.fxBar.value);
+    if(this.updateWouldAdd(upd)){this.endEdit();this.flashLockBanner();return;}
     this.applyLocalUpdate(upd);
     this.endEdit();
     if(upd.formula||upd.value!==undefined||upd.clear)await this.flush([upd]);
@@ -1184,6 +1318,7 @@ class SynexelApp{
 
   /* ── clipboard ── */
   copy(cut=false){
+    if(cut&&this.blockedDelete())return;
     const s=this.norm();
     const data=[];
     for(let r=s.r1;r<=s.r2;r++){
@@ -1202,6 +1337,7 @@ class SynexelApp{
 
   async paste(valOnly=false){
     if(!this.clip)return;
+    if(this.blockedAdd())return;
     const updates=[];
     const{data,rows,cols}=this.clip;
     for(let dr=0;dr<rows;dr++)for(let dc=0;dc<cols;dc++){
@@ -1218,6 +1354,7 @@ class SynexelApp{
   }
 
   async clearSel(){
+    if(this.blockedDelete())return;
     const s=this.norm();
     await this.unmergeSelection(s);
     const updates=[];
@@ -1245,6 +1382,7 @@ class SynexelApp{
 
   /* ── fill ── */
   async fillDown(){
+    if(this.blockedAdd())return;
     const s=this.norm();if(s.r1===s.r2)return;
     const updates=[];
     for(let c=s.c1;c<=s.c2;c++){
@@ -1263,6 +1401,7 @@ class SynexelApp{
   }
 
   async fillRight(){
+    if(this.blockedAdd())return;
     const s=this.norm();if(s.c1===s.c2)return;
     const updates=[];
     for(let r=s.r1;r<=s.r2;r++){
@@ -1346,6 +1485,7 @@ class SynexelApp{
   }
 
   async insertRow(above=true){
+    if(this.blockedAdd())return;
     const s=this.norm();
     const atRow=above?s.r1:s.r2+1;
     try{
@@ -1360,6 +1500,7 @@ class SynexelApp{
   }
 
   async deleteRow(){
+    if(this.blockedDelete())return;
     const s=this.norm();
     const count=s.r2-s.r1+1;
     if(count>=this.ROWS){this.toast('Cannot delete all rows','error');return;}
@@ -1376,6 +1517,7 @@ class SynexelApp{
   }
 
   async insertCol(left=true){
+    if(this.blockedAdd())return;
     const s=this.norm();
     const atCol=left?s.c1:s.c2+1;
     try{
@@ -1390,6 +1532,7 @@ class SynexelApp{
   }
 
   async deleteCol(){
+    if(this.blockedDelete())return;
     const s=this.norm();
     const count=s.c2-s.c1+1;
     if(count>=this.COLS){this.toast('Cannot delete all columns','error');return;}
@@ -1595,6 +1738,7 @@ class SynexelApp{
   }
 
   async addSheet(){
+    if(this.blockedAdd())return;
     const name=this.nextSheetName();
     try{
       const res=await api(`/workbooks/${this.wbId}/sheets`,{method:'POST',body:{name}});
@@ -1674,9 +1818,34 @@ class SynexelApp{
   closeModal(id){const m=APP.querySelector('#'+id);if(m)m.style.display='none';}
 
   /* ── toast ── */
-  toast(msg,type='info'){
-    const d=document.createElement('div');d.className=`xl-toast xl-toast-${type}`;d.textContent=msg;
-    this.$.toasts?.appendChild(d);setTimeout(()=>d.remove(),3000);
+  toast(msg,type='info',opts={}){
+    if(!this.$.toasts)return;
+    if(opts.dedupe){
+      const existing=this.$.toasts.querySelector(`[data-toast-type="${type}"]`);
+      if(existing){
+        const m=existing.querySelector('.xl-toast-msg');
+        if(m)m.textContent=msg;
+        clearTimeout(existing._timer);
+        existing._timer=setTimeout(()=>existing.remove(),3200);
+        return;
+      }
+    }
+    const d=document.createElement('div');
+    d.className=`xl-toast xl-toast-${type}`;
+    if(opts.dedupe)d.dataset.toastType=type;
+    const text=document.createElement('span');
+    text.className='xl-toast-msg';
+    text.textContent=msg;
+    d.appendChild(text);
+    const close=document.createElement('button');
+    close.type='button';
+    close.className='xl-toast-close';
+    close.setAttribute('aria-label','Dismiss');
+    close.innerHTML='&times;';
+    close.onclick=()=>d.remove();
+    d.appendChild(close);
+    this.$.toasts.appendChild(d);
+    d._timer=setTimeout(()=>d.remove(),3200);
   }
 
   setMode(msg){
@@ -1724,6 +1893,7 @@ class SynexelApp{
     this.$.gridBody.addEventListener('dblclick',e=>{
       e.preventDefault();
       const hit=this.resolveEventCell(e);if(!hit)return;
+      if(this.wouldAddAt(hit.r,hit.c)){this.flashLockBanner();return;}
       this.startEdit(hit.td);
     });
 
@@ -1765,10 +1935,12 @@ class SynexelApp{
       if(e.key==='Tab')      {e.preventDefault();this.move(0,sh?-1:1);return;}
       if(e.key==='Enter')    {e.preventDefault();this.move(sh?-1:1,0);return;}
       if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();this.clearSel();return;}
-      if(e.key==='F2')       {e.preventDefault();this.editActiveCell();return;}
+      if(e.key==='F2')       {e.preventDefault();if(this.wouldAddAt(this.activeCellCoords().r,this.activeCellCoords().c)){this.flashLockBanner();return;}this.editActiveCell();return;}
       if(e.key==='Escape')   {this.copySrc=null;this.renderAll();return;}
 
       if(!e.ctrlKey&&!e.metaKey&&!e.altKey&&e.key.length===1){
+        const ac=this.activeCellCoords();
+        if(this.wouldAddAt(ac.r,ac.c)){e.preventDefault();this.flashLockBanner();return;}
         const td=this.anchorCellEl(this.sel.r1,this.sel.c1);
         if(td){e.preventDefault();this.startEdit(td,e.key);}
       }
@@ -1817,10 +1989,15 @@ class SynexelApp{
 
     /* ── formula bar ── */
     this.$.fxBar.addEventListener('focus',()=>{
+      const ac=this.activeCellCoords();
+      if(this.wouldAddAt(ac.r,ac.c)){
+        this.$.fxBar.blur();
+        this.flashLockBanner();
+        return;
+      }
       this.editing=true;
       this.editMode='fx';
-      this.editAt=this.activeCellCoords();
-      const ac=this.editAt;
+      this.editAt=ac;
       this.$.fxBar.value=this.editVal(this.cells.get(this.key(ac.r,ac.c)));
       this.syncFxPreview();
       const fxc=APP.querySelector('#btn-fx-cancel'),fxo=APP.querySelector('#btn-fx-commit');
@@ -2054,6 +2231,7 @@ class SynexelApp{
 
     /* ── import/export ── */
     APP.querySelector('#input-import')?.addEventListener('change',async e=>{
+      if(this.blockedAdd()){e.target.value='';return;}
       const file=e.target.files?.[0];if(!file)return;
       const form=new FormData();form.append('file',file);
       this.setMode('Importing…');

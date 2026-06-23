@@ -3,7 +3,9 @@
 @section('title', 'Workbooks')
 
 @section('content')
-<div id="workbooks-app" class="wb-hub">
+<div id="workbooks-app" class="wb-hub"
+     data-can-add="{{ ($spreadsheetAccess['can_add'] ?? true) ? '1' : '0' }}"
+     data-can-delete="{{ ($spreadsheetAccess['can_delete'] ?? true) ? '1' : '0' }}">
     @include('partials.app-header', ['active' => 'workbooks'])
 
     <main class="wb-main">

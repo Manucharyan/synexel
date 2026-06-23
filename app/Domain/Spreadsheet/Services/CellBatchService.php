@@ -8,9 +8,12 @@ use App\Domain\Spreadsheet\DTOs\RangeRef;
 use App\Domain\Spreadsheet\Enums\CellValueType;
 use App\Domain\Spreadsheet\Events\CellsUpdated;
 use App\Domain\Spreadsheet\Events\OperationReverted;
+use App\Domain\Spreadsheet\Events\RangeCleared;
 use App\Domain\Spreadsheet\Models\Cell;
 use App\Domain\Spreadsheet\Models\CellChange;
 use App\Domain\Spreadsheet\Models\Sheet;
+use App\Models\User;
+use App\Services\SpreadsheetSettingsService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -19,6 +22,7 @@ class CellBatchService
     public function __construct(
         private readonly FormulaEvaluationService $formulaService,
         private readonly ConditionalFormatService $conditionalFormatService,
+        private readonly SpreadsheetSettingsService $spreadsheetSettings,
     ) {}
 
     public function readRange(Sheet $sheet, string $range, bool $includeHidden = false): array
@@ -64,6 +68,7 @@ class CellBatchService
         ?string $operationId = null,
         bool $recalculate = true,
         ?string $auditSource = null,
+        ?User $user = null,
     ): array {
         $operationId ??= 'op_'.Str::ulid();
         $parsedUpdates = array_map(fn ($u) => CellUpdate::fromArray($u), $updates);
@@ -71,6 +76,8 @@ class CellBatchService
         if (count($parsedUpdates) > config('spreadsheet.max_cells_per_request')) {
             throw new \InvalidArgumentException('Too many cells in one request.');
         }
+
+        $this->spreadsheetSettings->assertCellUpdatesAllowed($user, $sheet, $parsedUpdates);
 
         $changes = [];
 
@@ -122,8 +129,10 @@ class CellBatchService
         ];
     }
 
-    public function clearRange(Sheet $sheet, string $range, ?string $operationId = null): array
+    public function clearRange(Sheet $sheet, string $range, ?string $operationId = null, ?User $user = null): array
     {
+        $this->spreadsheetSettings->assertCanDelete($user);
+
         $operationId ??= 'op_'.Str::ulid();
         $ref = RangeRef::fromA1($range);
 
@@ -159,6 +168,7 @@ class CellBatchService
         bool $values = true,
         bool $formulas = true,
         bool $formats = true,
+        ?User $user = null,
     ): array {
         $source = RangeRef::fromA1($sourceRange);
         $target = A1Notation::toCoordinates($targetCell);
@@ -191,10 +201,10 @@ class CellBatchService
             $updates[] = $update;
         }
 
-        return $this->batchUpdate($sheet, $updates);
+        return $this->batchUpdate($sheet, $updates, user: $user);
     }
 
-    public function revert(string $operationId): array
+    public function revert(string $operationId, ?User $user = null): array
     {
         $changes = CellChange::query()
             ->where('operation_id', $operationId)
@@ -205,6 +215,8 @@ class CellBatchService
         if ($changes->isEmpty()) {
             throw new \InvalidArgumentException('Operation not found or already reverted.');
         }
+
+        $this->spreadsheetSettings->assertRevertAllowed($user, $changes);
 
         $sheet = Sheet::findOrFail($changes->first()->sheet_id);
         $reverted = 0;

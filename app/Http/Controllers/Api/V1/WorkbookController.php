@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\Spreadsheet\Services\WorkbookService;
+use App\Http\Controllers\Concerns\ChecksSpreadsheetAccess;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\WorkbookResource;
 use Illuminate\Http\JsonResponse;
@@ -11,6 +12,8 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class WorkbookController extends Controller
 {
+    use ChecksSpreadsheetAccess;
+
     public function __construct(private readonly WorkbookService $workbookService) {}
 
     public function index(Request $request): AnonymousResourceCollection
@@ -20,6 +23,8 @@ class WorkbookController extends Controller
 
     public function store(Request $request): WorkbookResource
     {
+        $this->assertCanAddSpreadsheetData($request);
+
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'metadata' => ['nullable', 'array'],
@@ -56,6 +61,8 @@ class WorkbookController extends Controller
 
     public function destroy(Request $request, string $id): JsonResponse
     {
+        $this->assertCanDeleteSpreadsheetData($request);
+
         $workbook = $this->workbookService->findForUser($request->user(), $id);
         $this->workbookService->delete($workbook);
 

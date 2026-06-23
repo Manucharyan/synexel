@@ -4,12 +4,15 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\Spreadsheet\Services\CellBatchService;
 use App\Domain\Spreadsheet\Services\WorkbookService;
+use App\Http\Controllers\Concerns\ChecksSpreadsheetAccess;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class CellController extends Controller
 {
+    use ChecksSpreadsheetAccess;
+
     public function __construct(
         private readonly WorkbookService $workbookService,
         private readonly CellBatchService $cellBatchService,
@@ -56,6 +59,7 @@ class CellController extends Controller
             $data['updates'],
             $data['operation_id'] ?? null,
             $data['recalculate'] ?? true,
+            user: $request->user(),
         );
 
         return response()->json(['data' => $result]);
@@ -75,6 +79,7 @@ class CellController extends Controller
             $sheet,
             $data['range'],
             $data['operation_id'] ?? null,
+            $request->user(),
         );
 
         return response()->json(['data' => $result]);
@@ -100,6 +105,7 @@ class CellController extends Controller
             $data['values'] ?? true,
             $data['formulas'] ?? true,
             $data['formats'] ?? true,
+            $request->user(),
         );
 
         return response()->json(['data' => $result]);

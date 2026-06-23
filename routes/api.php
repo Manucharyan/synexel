@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\V1\NamedRangeController;
 use App\Http\Controllers\Api\V1\OperationController;
 use App\Http\Controllers\Api\V1\RangeController;
 use App\Http\Controllers\Api\V1\SheetController;
+use App\Http\Controllers\Api\V1\SpreadsheetSettingsController;
 use App\Http\Controllers\Api\V1\WebhookSubscriptionController;
 use App\Http\Controllers\Api\V1\WorkbookController;
 use Illuminate\Support\Facades\Route;
@@ -21,6 +22,7 @@ Route::prefix('v1')->group(function () {
         Route::delete('auth/tokens', [AuthController::class, 'revokeTokens']);
 
         Route::get('audit-logs', [AuditLogController::class, 'index']);
+        Route::get('settings/spreadsheet', [SpreadsheetSettingsController::class, 'show']);
 
         Route::get('workbooks', [WorkbookController::class, 'index']);
         Route::post('workbooks', [WorkbookController::class, 'store']);
